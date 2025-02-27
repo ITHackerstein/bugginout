@@ -4,7 +4,7 @@
 #include <cctype>
 #include <cstdlib>
 
-namespace boc {
+namespace bo {
 
 constexpr std::array SUFFIXES = { "u8"sv, "i8"sv, "u16"sv, "i16"sv, "u32"sv, "i32"sv, "u64"sv, "i64"sv, "usize"sv, "isize"sv };
 

@@ -2,7 +2,7 @@
 
 #include <fmt/core.h>
 
-namespace boc {
+namespace bo {
 
 auto format_as(Span span) -> std::string {
 	return fmt::format("Span {{ start: {}, end: {} }}", span.start, span.end);

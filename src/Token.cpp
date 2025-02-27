@@ -2,7 +2,7 @@
 
 #include <fmt/core.h>
 
-namespace boc {
+namespace bo {
 
 auto format_as(Token token) -> std::string {
 	std::string_view token_type;

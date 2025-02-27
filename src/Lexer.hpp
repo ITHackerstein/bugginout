@@ -4,7 +4,7 @@
 
 #include "Token.hpp"
 
-namespace boc {
+namespace bo {
 
 class Lexer {
 public:

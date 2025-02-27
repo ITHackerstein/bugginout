@@ -47,7 +47,7 @@ using namespace std::literals;
 	BO_ENUMERATE_TOKEN(Semicolon)          \
 	BO_ENUMERATE_TOKEN(Solidus)
 
-namespace boc {
+namespace bo {
 
 class Token {
 public:

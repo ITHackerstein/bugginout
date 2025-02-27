@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <string>
 
-namespace boc {
+namespace bo {
 
 struct Span {
 	size_t start;
