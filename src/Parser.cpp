@@ -156,6 +156,32 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression()
 	}
 }
 
+Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
+	// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
+	switch (m_current_token.type()) {
+	case Token::Type::KW_bool:
+	case Token::Type::KW_char:
+	case Token::Type::KW_i16:
+	case Token::Type::KW_i32:
+	case Token::Type::KW_i64:
+	case Token::Type::KW_i8:
+	case Token::Type::KW_isize:
+	case Token::Type::KW_u16:
+	case Token::Type::KW_u32:
+	case Token::Type::KW_u64:
+	case Token::Type::KW_u8:
+	case Token::Type::KW_usize:
+	case Token::Type::Identifier:
+		{
+			auto type = std::make_shared<AST::Type const>(m_current_token.value(), m_current_token.span());
+			TRY(consume());
+			return type;
+		}
+	default:
+		return Error { fmt::format("Expected type, got {:?}!", m_current_token.value()), m_current_token.span() };
+	}
+}
+
 Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier() {
 	// FIXME: Switch to something better
 	if (m_current_token.type() != Token::Type::Identifier) {
@@ -195,14 +221,14 @@ Result<std::vector<AST::FunctionParameter>, Error> Parser::parse_function_parame
 
 		auto parameter_name = TRY(parse_identifier());
 		TRY(consume(Token::Type::Colon));
-		// FIXME: Should define better what a type is
-		auto parameter_type = TRY(parse_identifier());
+		auto parameter_type = TRY(parse_type());
+		parameters.emplace_back(std::move(parameter_name), std::move(parameter_type), is_anonymous);
 
 		if (m_current_token.type() != Token::Type::Comma) {
 			break;
 		}
+
 		TRY(consume());
-		parameters.emplace_back(parameter_name, parameter_type, is_anonymous);
 	}
 	TRY(consume(Token::Type::RightParenthesis));
 
@@ -216,7 +242,7 @@ Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::
 	auto function_name = TRY(parse_identifier());
 	auto function_parameters = TRY(parse_function_parameters());
 	TRY(consume(Token::Type::Colon));
-	auto function_return_type = TRY(parse_identifier());
+	auto function_return_type = TRY(parse_type());
 	auto function_body = TRY(parse_block_expression());
 
 	span = Span::merge(span, m_current_token.span());
