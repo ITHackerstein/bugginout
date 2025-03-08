@@ -48,7 +48,7 @@ private:
 };
 
 template<typename ErrorType>
-class Result<void, ErrorType> {
+class [[nodiscard]] Result<void, ErrorType> {
 public:
 	Result() = default;
 

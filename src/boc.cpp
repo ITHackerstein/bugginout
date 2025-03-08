@@ -1,18 +1,15 @@
-#include "Lexer.hpp"
+#include "Error.hpp"
+#include "Parser.hpp"
+#include "utils/Result.hpp"
 
 #include <fmt/core.h>
 
 Result<void, bo::Error> my_main() {
-	bo::Lexer lexer { "/* fn add(anon a: u32, anon b: u32): u32 {\na * b + a - b / a;\n}\n\nfn main() { var c = add(1_u16, 0xdeadbeef_u32); }*/" };
-	while (true) {
-		auto token = TRY(lexer.next_token());
-		fmt::print("{}\n", token);
-
-		if (token.type() == bo::Token::Type::EndOfFile) {
-			break;
-		}
-	}
-
+	// FIXME: For now I have to specify stupid types because keywords are not recognized as identifiers
+	auto source = "/* simple add function */ fn add(anon a: asdf, anon b: asdf): asdf {\n\ta + b;\n\tc\n}"sv;
+	auto parser = TRY(bo::Parser::create(source));
+	auto program = TRY(parser.parse_program());
+	program->dump(0);
 	return {};
 }
 
@@ -22,6 +19,7 @@ int main() {
 		// FIXME: Use custom formatter for Error
 		auto error = result.release_error();
 		fmt::println("Error: {}", error.message());
+		fmt::println("Span: {}", error.span());
 		return 1;
 	}
 
