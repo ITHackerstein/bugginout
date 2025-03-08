@@ -100,7 +100,7 @@ Result<Token, Error> Lexer::lex_integer_literal() {
 		advance_if_any_of_is_next(SUFFIXES.begin(), SUFFIXES.end());
 	}
 
-	return Token { token_type, m_source.substr(token_start, m_current_position - token_start - 1), { token_start, m_current_position - 1 } };
+	return Token { token_type, m_source.substr(token_start, m_current_position - token_start - 1), { token_start, m_current_position - 2 } };
 }
 
 Result<Token, Error> Lexer::lex_char_literal() {
@@ -152,7 +152,7 @@ Result<Token, Error> Lexer::lex_char_literal() {
 
 	advance();
 
-	return Token { Token::Type::CharLiteral, m_source.substr(token_start, m_current_position - token_start - 1), { token_start, m_current_position - 1 } };
+	return Token { Token::Type::CharLiteral, m_source.substr(token_start, m_current_position - token_start - 1), { token_start, m_current_position - 2 } };
 }
 
 Result<Token, Error> Lexer::lex_identifier_or_keyword() {
@@ -171,7 +171,7 @@ Result<Token, Error> Lexer::lex_identifier_or_keyword() {
 	_BO_ENUMERATE_KEYWORDS
 #undef BO_ENUMERATE_KEYWORD
 
-	return Token { token_type, token_value, { token_start, m_current_position - 1 } };
+	return Token { token_type, token_value, { token_start, m_current_position - 2 } };
 }
 
 Result<Token, Error> Lexer::next_token() {
@@ -210,53 +210,52 @@ Result<Token, Error> Lexer::next_token() {
 		return lex_identifier_or_keyword();
 	} else if (m_current_character == '&') {
 		advance();
-		return Token { Token::Type::Ampersand, "&"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Ampersand, "&"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '*') {
 		advance();
-		return Token { Token::Type::Asterisk, "*"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Asterisk, "*"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '@') {
 		advance();
-		return Token { Token::Type::At, "@"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::At, "@"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '^') {
 		advance();
-		return Token { Token::Type::Circumflex, "^"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Circumflex, "^"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == ':') {
 		advance();
-		return Token { Token::Type::Colon, ":"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Colon, ":"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == ',') {
 		advance();
-		return Token { Token::Type::Comma, ","sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Comma, ","sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '=') {
 		advance();
-		return Token { Token::Type::Equal, "="sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Equal, "="sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '{') {
 		advance();
-		return Token { Token::Type::LeftCurlyBracket, "{"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::LeftCurlyBracket, "{"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '(') {
 		advance();
-		return Token { Token::Type::LeftParenthesis, "("sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::LeftParenthesis, "("sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '-') {
 		advance();
-		return Token { Token::Type::Minus, "-"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Minus, "-"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '%') {
 		advance();
-		return Token { Token::Type::Percent, "%"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Percent, "%"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '+') {
 		advance();
-		return Token { Token::Type::Plus, "+"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Plus, "+"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '}') {
 		advance();
-		return Token { Token::Type::RightCurlyBracket, "}"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::RightCurlyBracket, "}"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == ')') {
 		advance();
-		return Token { Token::Type::RightParenthesis, ")"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::RightParenthesis, ")"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == ';') {
 		advance();
-		return Token { Token::Type::Semicolon, ";"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Semicolon, ";"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else if (m_current_character == '/') {
 		advance();
-
-		return Token { Token::Type::Solidus, "/"sv, { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::Solidus, "/"sv, { m_current_position - 2, m_current_position - 2 } };
 	} else {
 		return Error { "unexpected character while lexing", Span { m_current_position - 1, m_current_position - 1 } };
 	}
