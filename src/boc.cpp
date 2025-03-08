@@ -9,7 +9,7 @@ Result<void, bo::Error> my_main() {
 	auto source = "/* simple add function */ fn add(anon a: asdf, anon b: asdf): asdf {\n\ta + b;\n\tc\n}"sv;
 	auto parser = TRY(bo::Parser::create(source));
 	auto program = TRY(parser.parse_program());
-	program->dump(0);
+	program->dump();
 	return {};
 }
 

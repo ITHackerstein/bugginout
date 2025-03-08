@@ -7,187 +7,151 @@ namespace bo {
 
 namespace AST {
 
-static void print_indent(unsigned indent) {
-	for (unsigned i = 0; i < indent; ++i) {
-		fmt::print("  ");
-	}
+void ExpressionStatement::dump() const {
+	fmt::print("{{\"type\":\"ExpressionStatement\",\"span\":[{},{}],\"expression\":", span().start, span().end);
+	m_expression->dump();
+	fmt::print("}}");
 }
 
-void ExpressionStatement::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("ExpressionStatement");
-	m_expression->dump(indent + 1);
+void IntegerLiteral::dump() const {
+	fmt::print("{{\"type\":\"IntegerLiteral\",\"span\":[{},{}],\"value\":{:?}}}", span().start, span().end, m_value);
 }
 
-void IntegerLiteral::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::print("IntegerLiteral {{ {:?} }}\n", m_value);
+void Identifier::dump() const {
+	fmt::print("{{\"type\":\"Identifier\",\"span\":[{},{}],\"id\":{:?}}}", span().start, span().end, m_id);
 }
 
-void Identifier::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::print("Identifier {{ {:?} }}\n", m_id);
-}
-
-void BinaryExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("BinaryExpression");
-	print_indent(indent + 1);
-	fmt::print("Operator: ");
+void BinaryExpression::dump() const {
+	fmt::print("{{\"type\":\"BinaryExpression\",\"span\":[{},{}],", span().start, span().end);
 	switch (m_op) {
-#define BO_ENUMERATE_BINARY_OPERATOR(x) \
-	case BinaryOperator::x:               \
-		fmt::println(#x);                   \
+#define BO_ENUMERATE_BINARY_OPERATOR(x)     \
+	case BinaryOperator::x:                   \
+		fmt::print("\"operator\":\"{}\",", #x); \
 		break;
 		_BO_ENUMERATE_BINARY_OPERATORS
 #undef BO_ENUMERATE_BINARY_OPERATOR
 	}
-	print_indent(indent + 1);
-	fmt::println("LHS:");
-	m_lhs->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("RHS:");
-	m_rhs->dump(indent + 2);
+	fmt::print("\"lhs\":");
+	m_lhs->dump();
+	fmt::print(",\"rhs\":");
+	m_rhs->dump();
+	fmt::print("}}");
 }
 
-void VariableDeclarationStatement::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("VariableDeclarationStatement");
-	m_identifier->dump(indent + 1);
-	m_expression->dump(indent + 1);
+void VariableDeclarationStatement::dump() const {
+	fmt::print("{{\"type\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\"identifier\":");
+	m_identifier->dump();
+	fmt::println(",\"expression\":");
+	m_expression->dump();
+	fmt::println("}}");
 }
 
-void BlockExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("BlockExpression");
+void BlockExpression::dump() const {
+	fmt::print("{{\"type\":\"BlockExpression\",\"span\":[{},{}],\"statements\":[", span().start, span().end);
 	for (auto const& statement : m_statements) {
-		statement->dump(indent + 1);
+		statement->dump();
+		fmt::print(",");
 	}
-
-	std::visit([indent](auto const& value) { value->dump(indent + 1); }, m_last_expression_or_statement);
+	std::visit([](auto const& node) { node->dump(); }, m_last_expression_or_statement);
+	fmt::print("]}}");
 }
 
-void FunctionDeclarationStatement::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("FunctionDeclarationStatement");
-
-	print_indent(indent + 1);
-	fmt::println("Name");
-	m_name->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("Parameters");
-	for (auto const& parameter : m_parameters) {
-		print_indent(indent + 2);
-		fmt::println("Anonymous: {}", parameter.is_anonymous);
-
-		print_indent(indent + 2);
-		fmt::println("Name");
-		parameter.type->dump(indent + 3);
-
-		print_indent(indent + 2);
-		fmt::println("Name");
-		parameter.name->dump(indent + 3);
-
-		fmt::println("");
-	}
-
-	print_indent(indent + 1);
-	fmt::println("Body");
-	m_body->dump(indent + 2);
-}
-
-void IfExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("IfExpression");
-
-	print_indent(indent + 1);
-	fmt::println("Condition");
-	m_condition->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("Then");
-	m_then_block->dump(indent + 2);
-
-	if (m_else_block) {
-		print_indent(indent + 1);
-		fmt::println("Else");
-		(*m_else_block)->dump(indent + 2);
-	}
-}
-
-void InfiniteForExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("InfiniteForExpression");
-
-	print_indent(indent + 1);
-	fmt::println("Body");
-	m_body->dump(indent + 2);
-}
-
-void ForWithConditionExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("ForWithConditionExpression");
-
-	print_indent(indent + 1);
-	fmt::println("Condition");
-	m_condition->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("Body");
-	m_body->dump(indent + 2);
-}
-
-void ForWithRangeExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("ForWithRangeExpression");
-
-	print_indent(indent + 1);
-	fmt::println("Range variable");
-	m_range_variable->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("Range expression");
-	m_range_expression->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("Body");
-	m_body->dump(indent + 2);
-}
-
-void FunctionCallExpression::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("FunctionCallExpression");
-
-	print_indent(indent + 1);
-	fmt::println("Name");
-	m_name->dump(indent + 2);
-
-	print_indent(indent + 1);
-	fmt::println("Arguments");
-	for (auto const& argument : m_arguments) {
-		if (argument.name) {
-			print_indent(indent + 2);
-			fmt::println("Name");
-			(*argument.name)->dump(indent + 3);
+void FunctionDeclarationStatement::dump() const {
+	fmt::print("{{\"type\":\"FunctionDeclarationStatement\",\"span\":[{},{}]", span().start, span().end);
+	fmt::print(",\"name\":");
+	m_name->dump();
+	fmt::print(",\"parameters\":[");
+	for (std::size_t i = 0; i < m_parameters.size(); ++i) {
+		auto const& parameter = m_parameters[i];
+		fmt::print("{{\"name\":");
+		parameter.name->dump();
+		fmt::print(",\"type\":");
+		parameter.type->dump();
+		fmt::print(",\"anonymous\":{}}}", parameter.is_anonymous);
+		if (i != m_parameters.size() - 1) {
+			fmt::print(",");
 		}
-
-		print_indent(indent + 2);
-		fmt::println("Value");
-		argument.value->dump(indent + 3);
 	}
-
-	m_name->dump(indent + 2);
+	fmt::print("]");
+	fmt::print(",\"body\":");
+	m_body->dump();
+	fmt::print(",\"return_type\":");
+	m_return_type->dump();
+	fmt::print("}}");
 }
 
-void Program::dump(unsigned indent) const {
-	print_indent(indent);
-	fmt::println("Program");
-
-	for (auto const& function : m_functions) {
-		function->dump(indent + 1);
+void IfExpression::dump() const {
+	fmt::print("{{\"type\":\"IfExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\"condition\":");
+	m_condition->dump();
+	fmt::println(",\"then_block\":");
+	m_then_block->dump();
+	if (m_else_block) {
+		fmt::println(",\"else_block\":");
+		(*m_else_block)->dump();
 	}
+	fmt::print("}}");
+}
+
+void InfiniteForExpression::dump() const {
+	fmt::print("{{\"type\":\"InfiniteForExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\"body\":");
+	m_body->dump();
+	fmt::print("}}");
+}
+
+void ForWithConditionExpression::dump() const {
+	fmt::print("{{\"type\":\"ForWithConditionExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\",condition\":");
+	m_condition->dump();
+	fmt::println("\",body\":");
+	m_body->dump();
+	fmt::print("}}");
+}
+
+void ForWithRangeExpression::dump() const {
+	fmt::print("{{\"type\":\"ForWithRangeExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\",range_variable\":");
+	m_range_variable->dump();
+	fmt::println("\",range_expression\":");
+	m_range_expression->dump();
+	fmt::print("}}");
+}
+
+void FunctionCallExpression::dump() const {
+	fmt::print("{{\"type\":\"FunctionCallExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\"name\":");
+	m_name->dump();
+	fmt::println(",\"arguments\":[");
+	for (std::size_t i = 0; i < m_arguments.size(); ++i) {
+		auto const& argument = m_arguments[i];
+
+		fmt::print("{{");
+		if (argument.name) {
+			fmt::print("\"name\":");
+			(*argument.name)->dump();
+			fmt::print(",");
+		}
+		fmt::print("\"value\":");
+		argument.value->dump();
+
+		if (i != m_arguments.size() - 1) {
+			fmt::print(",");
+		}
+	}
+}
+
+void Program::dump() const {
+	fmt::print("{{\"type\":\"Program\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"functions\":[");
+	for (std::size_t i = 0; i < m_functions.size(); ++i) {
+		m_functions[i]->dump();
+		if (i != m_functions.size() - 1) {
+			fmt::print(",");
+		}
+	}
+	fmt::print("]}}");
 }
 
 }

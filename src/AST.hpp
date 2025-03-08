@@ -14,7 +14,7 @@ class Node {
 public:
 	virtual ~Node() = default;
 
-	virtual void dump(unsigned indent) const = 0;
+	virtual void dump() const = 0;
 
 	Span span() const { return m_span; }
 
@@ -47,7 +47,7 @@ public:
 	explicit ExpressionStatement(std::shared_ptr<Expression const> expression, Span span)
 	  : Statement(span), m_expression(std::move(expression)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_expression;
@@ -58,7 +58,7 @@ public:
 	explicit IntegerLiteral(std::string_view value, Span span)
 	  : Expression(span), m_value(value) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::string_view m_value;
@@ -69,7 +69,7 @@ public:
 	explicit Identifier(std::string_view id, Span span)
 	  : Expression(span), m_id(id) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::string_view m_id;
@@ -93,7 +93,7 @@ public:
 	explicit BinaryExpression(std::shared_ptr<Expression const> lhs, std::shared_ptr<Expression const> rhs, BinaryOperator op, Span span)
 	  : Expression(span), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_lhs;
@@ -106,7 +106,7 @@ public:
 	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::shared_ptr<Expression const> expression, Span span)
 	  : Statement(span), m_identifier(std::move(identifier)), m_expression(std::move(expression)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Identifier const> m_identifier;
@@ -121,7 +121,7 @@ public:
 	explicit BlockExpression(std::vector<std::shared_ptr<Statement const>> statements, std::shared_ptr<Statement const> statement, Span span)
 	  : Expression(span), m_statements(std::move(statements)), m_last_expression_or_statement(std::move(statement)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::vector<std::shared_ptr<Statement const>> m_statements;
@@ -139,7 +139,7 @@ public:
 	explicit FunctionDeclarationStatement(std::shared_ptr<Identifier const> name, std::vector<FunctionParameter> parameters, std::shared_ptr<Identifier const> return_type, std::shared_ptr<BlockExpression const> body, Span span)
 	  : Statement(span), m_name(std::move(name)), m_parameters(std::move(parameters)), m_return_type(return_type), m_body(std::move(body)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Identifier const> m_name;
@@ -153,7 +153,7 @@ public:
 	explicit IfExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> then_block, std::optional<std::shared_ptr<BlockExpression const>> else_block, Span span)
 	  : Expression(span), m_condition(std::move(condition)), m_then_block(std::move(then_block)), m_else_block(std::move(else_block)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_condition;
@@ -174,7 +174,7 @@ public:
 	explicit InfiniteForExpression(std::shared_ptr<BlockExpression const> body, Span span)
 	  : ForExpression(body, span) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 };
 
 class ForWithConditionExpression : public ForExpression {
@@ -182,7 +182,7 @@ public:
 	explicit ForWithConditionExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> body, Span span)
 	  : ForExpression(body, span), m_condition(condition) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_condition;
@@ -193,7 +193,7 @@ public:
 	explicit ForWithRangeExpression(std::shared_ptr<Identifier const> range_variable, std::shared_ptr<Expression const> range_expression, std::shared_ptr<BlockExpression const> body, Span span)
 	  : ForExpression(body, span), m_range_variable(std::move(range_variable)), m_range_expression(std::move(range_expression)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Identifier const> m_range_variable;
@@ -210,7 +210,7 @@ public:
 	explicit FunctionCallExpression(std::shared_ptr<Identifier const> name, std::vector<FunctionArgument> arguments, Span span)
 	  : Expression(span), m_name(std::move(name)), m_arguments(std::move(arguments)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Identifier const> m_name;
@@ -222,7 +222,7 @@ public:
 	explicit Program(std::vector<std::shared_ptr<FunctionDeclarationStatement const>> functions, Span span)
 	  : Node(span), m_functions(std::move(functions)) {}
 
-	virtual void dump(unsigned indent) const override;
+	virtual void dump() const override;
 
 private:
 	// FIXME: Change to a specific node which will contain all the top level statements
