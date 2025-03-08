@@ -7,22 +7,26 @@ namespace bo {
 
 namespace AST {
 
+void Type::dump() const {
+	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}],\"type\":{:?}}}", span().start, span().end, m_type);
+}
+
 void ExpressionStatement::dump() const {
-	fmt::print("{{\"type\":\"ExpressionStatement\",\"span\":[{},{}],\"expression\":", span().start, span().end);
+	fmt::print("{{\"node\":\"ExpressionStatement\",\"span\":[{},{}],\"expression\":", span().start, span().end);
 	m_expression->dump();
 	fmt::print("}}");
 }
 
 void IntegerLiteral::dump() const {
-	fmt::print("{{\"type\":\"IntegerLiteral\",\"span\":[{},{}],\"value\":{:?}}}", span().start, span().end, m_value);
+	fmt::print("{{\"node\":\"IntegerLiteral\",\"span\":[{},{}],\"value\":{:?}}}", span().start, span().end, m_value);
 }
 
 void Identifier::dump() const {
-	fmt::print("{{\"type\":\"Identifier\",\"span\":[{},{}],\"id\":{:?}}}", span().start, span().end, m_id);
+	fmt::print("{{\"node\":\"Identifier\",\"span\":[{},{}],\"id\":{:?}}}", span().start, span().end, m_id);
 }
 
 void BinaryExpression::dump() const {
-	fmt::print("{{\"type\":\"BinaryExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"BinaryExpression\",\"span\":[{},{}],", span().start, span().end);
 	switch (m_op) {
 #define BO_ENUMERATE_BINARY_OPERATOR(x)     \
 	case BinaryOperator::x:                   \
@@ -39,7 +43,7 @@ void BinaryExpression::dump() const {
 }
 
 void VariableDeclarationStatement::dump() const {
-	fmt::print("{{\"type\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\"identifier\":");
 	m_identifier->dump();
 	fmt::println(",\"expression\":");
@@ -48,7 +52,7 @@ void VariableDeclarationStatement::dump() const {
 }
 
 void BlockExpression::dump() const {
-	fmt::print("{{\"type\":\"BlockExpression\",\"span\":[{},{}],\"statements\":[", span().start, span().end);
+	fmt::print("{{\"node\":\"BlockExpression\",\"span\":[{},{}],\"statements\":[", span().start, span().end);
 	for (auto const& statement : m_statements) {
 		statement->dump();
 		fmt::print(",");
@@ -58,7 +62,7 @@ void BlockExpression::dump() const {
 }
 
 void FunctionDeclarationStatement::dump() const {
-	fmt::print("{{\"type\":\"FunctionDeclarationStatement\",\"span\":[{},{}]", span().start, span().end);
+	fmt::print("{{\"node\":\"FunctionDeclarationStatement\",\"span\":[{},{}]", span().start, span().end);
 	fmt::print(",\"name\":");
 	m_name->dump();
 	fmt::print(",\"parameters\":[");
@@ -74,15 +78,15 @@ void FunctionDeclarationStatement::dump() const {
 		}
 	}
 	fmt::print("]");
-	fmt::print(",\"body\":");
-	m_body->dump();
 	fmt::print(",\"return_type\":");
 	m_return_type->dump();
+	fmt::print(",\"body\":");
+	m_body->dump();
 	fmt::print("}}");
 }
 
 void IfExpression::dump() const {
-	fmt::print("{{\"type\":\"IfExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"IfExpression\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\"condition\":");
 	m_condition->dump();
 	fmt::println(",\"then_block\":");
@@ -95,14 +99,14 @@ void IfExpression::dump() const {
 }
 
 void InfiniteForExpression::dump() const {
-	fmt::print("{{\"type\":\"InfiniteForExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"InfiniteForExpression\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\"body\":");
 	m_body->dump();
 	fmt::print("}}");
 }
 
 void ForWithConditionExpression::dump() const {
-	fmt::print("{{\"type\":\"ForWithConditionExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"ForWithConditionExpression\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\",condition\":");
 	m_condition->dump();
 	fmt::println("\",body\":");
@@ -111,7 +115,7 @@ void ForWithConditionExpression::dump() const {
 }
 
 void ForWithRangeExpression::dump() const {
-	fmt::print("{{\"type\":\"ForWithRangeExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"ForWithRangeExpression\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\",range_variable\":");
 	m_range_variable->dump();
 	fmt::println("\",range_expression\":");
@@ -120,7 +124,7 @@ void ForWithRangeExpression::dump() const {
 }
 
 void FunctionCallExpression::dump() const {
-	fmt::print("{{\"type\":\"FunctionCallExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"FunctionCallExpression\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\"name\":");
 	m_name->dump();
 	fmt::println(",\"arguments\":[");
@@ -143,7 +147,7 @@ void FunctionCallExpression::dump() const {
 }
 
 void Program::dump() const {
-	fmt::print("{{\"type\":\"Program\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("{{\"node\":\"Program\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"functions\":[");
 	for (std::size_t i = 0; i < m_functions.size(); ++i) {
 		m_functions[i]->dump();

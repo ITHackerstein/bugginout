@@ -42,6 +42,17 @@ public:
 private:
 };
 
+class Type : public Node {
+public:
+	explicit Type(std::string_view type, Span span)
+	  : Node(span), m_type(type) {}
+
+	virtual void dump() const override;
+
+private:
+	std::string_view m_type;
+};
+
 class ExpressionStatement : public Statement {
 public:
 	explicit ExpressionStatement(std::shared_ptr<Expression const> expression, Span span)
@@ -130,13 +141,13 @@ private:
 
 struct FunctionParameter {
 	std::shared_ptr<Identifier const> name;
-	std::shared_ptr<Identifier const> type;
+	std::shared_ptr<Type const> type;
 	bool is_anonymous;
 };
 
 class FunctionDeclarationStatement : public Statement {
 public:
-	explicit FunctionDeclarationStatement(std::shared_ptr<Identifier const> name, std::vector<FunctionParameter> parameters, std::shared_ptr<Identifier const> return_type, std::shared_ptr<BlockExpression const> body, Span span)
+	explicit FunctionDeclarationStatement(std::shared_ptr<Identifier const> name, std::vector<FunctionParameter> parameters, std::shared_ptr<Type const> return_type, std::shared_ptr<BlockExpression const> body, Span span)
 	  : Statement(span), m_name(std::move(name)), m_parameters(std::move(parameters)), m_return_type(return_type), m_body(std::move(body)) {}
 
 	virtual void dump() const override;
@@ -144,7 +155,7 @@ public:
 private:
 	std::shared_ptr<Identifier const> m_name;
 	std::vector<FunctionParameter> m_parameters;
-	std::shared_ptr<Identifier const> m_return_type;
+	std::shared_ptr<Type const> m_return_type;
 	std::shared_ptr<BlockExpression const> m_body;
 };
 
