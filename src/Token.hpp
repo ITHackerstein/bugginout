@@ -53,7 +53,8 @@ using namespace std::literals;
 	BO_ENUMERATE_TOKEN(RightCurlyBracket)  \
 	BO_ENUMERATE_TOKEN(RightParenthesis)   \
 	BO_ENUMERATE_TOKEN(Semicolon)          \
-	BO_ENUMERATE_TOKEN(Solidus)
+	BO_ENUMERATE_TOKEN(Solidus)            \
+	BO_ENUMERATE_TOKEN(__COUNT)
 
 namespace bo {
 
@@ -66,6 +67,8 @@ public:
 #undef BO_ENUMERATE_TOKEN
 #undef BO_ENUMERATE_KEYWORD
 	};
+
+	static constexpr std::size_t count() { return static_cast<std::size_t>(Token::Type::__COUNT); }
 
 	explicit Token(Type type, std::string_view value, Span span)
 	  : m_type(type), m_value(value), m_span(span) {}

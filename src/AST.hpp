@@ -113,6 +113,18 @@ private:
 	BinaryOperator m_op;
 };
 
+class AssignmentExpression : public Expression {
+public:
+	explicit AssignmentExpression(std::shared_ptr<Expression const> lhs, std::shared_ptr<Expression const> rhs, Span span)
+	  : Expression(span), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_lhs;
+	std::shared_ptr<Expression const> m_rhs;
+};
+
 class VariableDeclarationStatement : public Statement {
 public:
 	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::optional<std::shared_ptr<Type const>> type, std::optional<std::shared_ptr<Expression const>> expression, Span span)

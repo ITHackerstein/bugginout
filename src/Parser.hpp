@@ -18,7 +18,7 @@ private:
 	bool match_secondary_expression() const;
 
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_primary_expression();
-	// FIXME: Should deal with associativity
+	std::shared_ptr<AST::Expression const> parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, std::shared_ptr<AST::Expression const> rhs, Token::Type left);
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression_inner(unsigned minimum_precedence);
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression();
 	Result<std::shared_ptr<AST::Statement const>, Error> parse_statement();

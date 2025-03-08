@@ -42,12 +42,12 @@ void BinaryExpression::dump() const {
 	fmt::print("}}");
 }
 
-void VariableAssignmentExpression::dump() const {
-	fmt::print("{{\"node\":\"VariableAssignmentExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\"identifier\":");
-	m_identifier->dump();
-	fmt::print(",\"expression\":");
-	m_expression->dump();
+void AssignmentExpression::dump() const {
+	fmt::print("{{\"node\":\"AssignmentExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\"lhs\":");
+	m_lhs->dump();
+	fmt::print(",\"rhs\":");
+	m_rhs->dump();
 	fmt::println("}}");
 }
 

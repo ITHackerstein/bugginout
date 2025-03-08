@@ -1,5 +1,7 @@
 #include "Parser.hpp"
 
+#include "OperatorData.hpp"
+
 #include <fmt/core.h>
 
 namespace bo {
@@ -39,39 +41,8 @@ bool Parser::match_secondary_expression() const {
 	  || type == Token::Type::Minus
 	  || type == Token::Type::Asterisk
 	  || type == Token::Type::Solidus
-	  || type == Token::Type::Percent;
-}
-
-// FIXME: Switch this to a table for better readability
-static unsigned operator_precedence_of(Token::Type type) {
-	switch (type) {
-	case Token::Type::Plus:
-	case Token::Type::Minus:
-		return 1;
-	case Token::Type::Asterisk:
-	case Token::Type::Solidus:
-	case Token::Type::Percent:
-		return 2;
-	default:
-		return 0;
-	}
-}
-
-static AST::BinaryOperator operator_from_token(Token::Type type) {
-	switch (type) {
-	case Token::Type::Plus:
-		return AST::BinaryOperator::Addition;
-	case Token::Type::Minus:
-		return AST::BinaryOperator::Subtraction;
-	case Token::Type::Asterisk:
-		return AST::BinaryOperator::Multiplication;
-	case Token::Type::Solidus:
-		return AST::BinaryOperator::Division;
-	case Token::Type::Percent:
-		return AST::BinaryOperator::Modulo;
-	default:
-		assert(false && "Should not be here!");
-	}
+	  || type == Token::Type::Percent
+	  || type == Token::Type::Equal;
 }
 
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expression() {
@@ -96,19 +67,42 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 	}
 }
 
+std::shared_ptr<AST::Expression const> Parser::parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, std::shared_ptr<AST::Expression const> rhs, Token::Type operator_) {
+	switch (operator_) {
+	case Token::Type::Plus:
+		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Addition, Span::merge(lhs->span(), rhs->span()));
+	case Token::Type::Minus:
+		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Subtraction, Span::merge(lhs->span(), rhs->span()));
+	case Token::Type::Asterisk:
+		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Multiplication, Span::merge(lhs->span(), rhs->span()));
+	case Token::Type::Solidus:
+		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Division, Span::merge(lhs->span(), rhs->span()));
+	case Token::Type::Percent:
+		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Modulo, Span::merge(lhs->span(), rhs->span()));
+	case Token::Type::Equal:
+		return std::make_shared<AST::AssignmentExpression const>(std::move(lhs), std::move(rhs), Span::merge(lhs->span(), rhs->span()));
+	default:
+		assert(false && "Should not be here!");
+	}
+}
+
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_inner(unsigned minimum_precedence) {
 	auto result = TRY(parse_primary_expression());
 
 	while (match_secondary_expression()) {
-		auto operator_precedence = operator_precedence_of(m_current_token.type());
+		auto operator_ = m_current_token.type();
+		auto operator_precedence = OperatorData::precedence_of(operator_);
 		if (operator_precedence < minimum_precedence) {
 			break;
 		}
 
-		auto operator_ = operator_from_token(m_current_token.type());
+		if (OperatorData::associativity_of(m_current_token.type()) == Associativity::Left) {
+			++operator_precedence;
+		}
+
 		TRY(consume());
-		auto rhs = TRY(parse_expression_inner(operator_precedence + 1));
-		result = std::make_shared<AST::BinaryExpression const>(std::move(result), std::move(rhs), operator_, Span::merge(result->span(), rhs->span()));
+		auto rhs = TRY(parse_expression_inner(operator_precedence));
+		result = parse_secondary_expression(std::move(result), std::move(rhs), operator_);
 	}
 
 	return result;

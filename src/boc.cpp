@@ -6,7 +6,7 @@
 
 Result<void, bo::Error> my_main() {
 	// FIXME: For now I have to specify stupid types because keywords are not recognized as identifiers
-	auto source = "/* simple add function */ fn add(anon a: u32, anon b: u32): u32 {\n\tvar c: u32 = a + b; c\n}"sv;
+	auto source = "/* simple add function */ fn add(anon a: u32, anon b: u32): u32 {\n\tvar c: mut u32; c = a + b * 2; c\n}"sv;
 	auto parser = TRY(bo::Parser::create(source));
 	auto program = TRY(parser.parse_program());
 	program->dump();
