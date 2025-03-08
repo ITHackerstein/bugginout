@@ -78,6 +78,7 @@ private:
 	Span m_span;
 };
 
+auto format_as(Token::Type) -> std::string;
 auto format_as(Token) -> std::string;
 
 }
