@@ -8,7 +8,7 @@ namespace bo {
 namespace AST {
 
 void Type::dump() const {
-	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}],\"type\":{:?}}}", span().start, span().end, m_type);
+	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}],\"type\":{:?},\"is_mutable\":{}}}", span().start, span().end, m_type, m_is_mutable);
 }
 
 void ExpressionStatement::dump() const {
@@ -42,12 +42,28 @@ void BinaryExpression::dump() const {
 	fmt::print("}}");
 }
 
+void VariableAssignmentExpression::dump() const {
+	fmt::print("{{\"node\":\"VariableAssignmentExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::println("\"identifier\":");
+	m_identifier->dump();
+	fmt::print(",\"expression\":");
+	m_expression->dump();
+	fmt::println("}}");
+}
+
 void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\"identifier\":");
 	m_identifier->dump();
-	fmt::println(",\"expression\":");
-	m_expression->dump();
+	if (*m_type) {
+		fmt::print(",\"type\":");
+		(*m_type)->dump();
+	}
+
+	if (*m_expression) {
+		fmt::print(",\"expression\":");
+		(*m_expression)->dump();
+	}
 	fmt::println("}}");
 }
 

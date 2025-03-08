@@ -26,7 +26,8 @@ using namespace std::literals;
 	BO_ENUMERATE_KEYWORD(u32)    \
 	BO_ENUMERATE_KEYWORD(u64)    \
 	BO_ENUMERATE_KEYWORD(u8)     \
-	BO_ENUMERATE_KEYWORD(usize)
+	BO_ENUMERATE_KEYWORD(usize)  \
+	BO_ENUMERATE_KEYWORD(var)
 
 #define _BO_ENUMERATE_TOKENS             \
 	_BO_ENUMERATE_KEYWORDS                 \

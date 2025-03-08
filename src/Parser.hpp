@@ -20,14 +20,15 @@ private:
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_primary_expression();
 	// FIXME: Should deal with associativity
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression_inner(unsigned minimum_precedence);
-	Result<std::shared_ptr<AST::BlockExpression const>, Error> parse_block_expression();
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression();
-
+	Result<std::shared_ptr<AST::Statement const>, Error> parse_statement();
+	Result<std::shared_ptr<AST::BlockExpression const>, Error> parse_block_expression();
 	Result<std::shared_ptr<AST::Type const>, Error> parse_type();
 	Result<std::shared_ptr<AST::Identifier const>, Error> parse_identifier();
 	Result<std::shared_ptr<AST::IntegerLiteral const>, Error> parse_integer_literal();
 	Result<std::vector<AST::FunctionParameter>, Error> parse_function_parameters();
 	Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> parse_function_declaration();
+	Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> parse_variable_declaration();
 
 	Result<void, Error> consume(std::optional<Token::Type> = {});
 

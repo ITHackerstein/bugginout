@@ -114,11 +114,39 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_i
 	return result;
 }
 
+Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression() {
+	switch (m_current_token.type()) {
+	case Token::Type::LeftCurlyBracket:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_block_expression()));
+	default:
+		return parse_expression_inner(0);
+	}
+}
+
+Result<std::shared_ptr<AST::Statement const>, Error> Parser::parse_statement() {
+	switch (m_current_token.type()) {
+	case Token::Type::KW_var:
+		return std::static_pointer_cast<AST::Statement const>(TRY(parse_variable_declaration()));
+	default:
+		{
+			auto expression = TRY(parse_expression());
+			TRY(consume(Token::Type::Semicolon));
+			auto expression_statement = std::make_shared<AST::ExpressionStatement const>(std::move(expression), expression->span());
+			return std::static_pointer_cast<AST::Statement const>(std::move(expression_statement));
+		}
+	}
+}
+
 Result<std::shared_ptr<AST::BlockExpression const>, Error> Parser::parse_block_expression() {
 	TRY(consume(Token::Type::LeftCurlyBracket));
 	std::vector<std::shared_ptr<AST::Statement const>> statements;
 	std::shared_ptr<AST::Expression const> last_expression;
 	while (m_current_token.type() != Token::Type::RightCurlyBracket) {
+		if (m_current_token.type() == Token::Type::KW_var) {
+			statements.push_back(TRY(parse_variable_declaration()));
+			continue;
+		}
+
 		last_expression = TRY(parse_expression());
 		if (m_current_token.type() == Token::Type::Semicolon) {
 			TRY(consume());
@@ -147,16 +175,13 @@ Result<std::shared_ptr<AST::BlockExpression const>, Error> Parser::parse_block_e
 	}
 }
 
-Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression() {
-	switch (m_current_token.type()) {
-	case Token::Type::LeftCurlyBracket:
-		return std::static_pointer_cast<AST::Expression const>(TRY(parse_block_expression()));
-	default:
-		return parse_expression_inner(0);
-	}
-}
-
 Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
+	bool is_mutable = false;
+	if (m_current_token.type() == Token::Type::KW_mut) {
+		is_mutable = true;
+		TRY(consume());
+	}
+
 	// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
 	switch (m_current_token.type()) {
 	case Token::Type::KW_bool:
@@ -173,7 +198,7 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 	case Token::Type::KW_usize:
 	case Token::Type::Identifier:
 		{
-			auto type = std::make_shared<AST::Type const>(m_current_token.value(), m_current_token.span());
+			auto type = std::make_shared<AST::Type const>(m_current_token.value(), is_mutable, m_current_token.span());
 			TRY(consume());
 			return type;
 		}
@@ -248,6 +273,33 @@ Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::
 	span = Span::merge(span, m_current_token.span());
 
 	return std::make_shared<AST::FunctionDeclarationStatement const>(function_name, function_parameters, function_return_type, function_body, span);
+}
+
+Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::parse_variable_declaration() {
+	auto span = m_current_token.span();
+	TRY(consume(Token::Type::KW_var));
+	auto identifier = TRY(parse_identifier());
+	std::optional<std::shared_ptr<AST::Type const>> type;
+	std::optional<std::shared_ptr<AST::Expression const>> expression;
+
+	if (m_current_token.type() == Token::Type::Equal) {
+		TRY(consume());
+		expression = TRY(parse_expression());
+	} else if (m_current_token.type() == Token::Type::Colon) {
+		TRY(consume());
+		type = TRY(parse_type());
+
+		if (m_current_token.type() == Token::Type::Equal) {
+			TRY(consume());
+			expression = TRY(parse_expression());
+		}
+	} else {
+		return Error { fmt::format("Expected ':' or '=', got {:?}!", m_current_token.value()), m_current_token.span() };
+	}
+
+	TRY(consume(Token::Type::Semicolon));
+	span = Span::merge(span, m_current_token.span());
+	return std::make_shared<AST::VariableDeclarationStatement const>(std::move(identifier), std::move(type), std::move(expression), span);
 }
 
 }

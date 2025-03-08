@@ -44,13 +44,14 @@ private:
 
 class Type : public Node {
 public:
-	explicit Type(std::string_view type, Span span)
-	  : Node(span), m_type(type) {}
+	explicit Type(std::string_view type, bool is_mutable, Span span)
+	  : Node(span), m_type(type), m_is_mutable(is_mutable) {}
 
 	virtual void dump() const override;
 
 private:
 	std::string_view m_type;
+	bool m_is_mutable;
 };
 
 class ExpressionStatement : public Statement {
@@ -114,14 +115,15 @@ private:
 
 class VariableDeclarationStatement : public Statement {
 public:
-	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::shared_ptr<Expression const> expression, Span span)
-	  : Statement(span), m_identifier(std::move(identifier)), m_expression(std::move(expression)) {}
+	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::optional<std::shared_ptr<Type const>> type, std::optional<std::shared_ptr<Expression const>> expression, Span span)
+	  : Statement(span), m_identifier(std::move(identifier)), m_type(type), m_expression(std::move(expression)) {}
 
 	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Identifier const> m_identifier;
-	std::shared_ptr<Expression const> m_expression;
+	std::optional<std::shared_ptr<Type const>> m_type;
+	std::optional<std::shared_ptr<Expression const>> m_expression;
 };
 
 class BlockExpression : public Expression {
