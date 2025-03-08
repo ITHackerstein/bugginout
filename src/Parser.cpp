@@ -22,7 +22,7 @@ Result<void, Error> Parser::consume(std::optional<Token::Type> token_type) {
 Result<std::shared_ptr<AST::Program const>, Error> Parser::parse_program() {
 	std::vector<std::shared_ptr<AST::FunctionDeclarationStatement const>> functions;
 
-	Span span;
+	Span span { 0, 0 };
 	while (m_current_token.type() != Token::Type::EndOfFile) {
 		auto function_declaration = TRY(parse_function_declaration());
 		span = Span::merge(span, function_declaration->span());
