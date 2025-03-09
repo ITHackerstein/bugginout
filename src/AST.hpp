@@ -113,6 +113,30 @@ private:
 	BinaryOperator m_op;
 };
 
+#define _BO_ENUMERATE_UNARY_OPERATORS             \
+	BO_ENUMERATE_UNARY_OPERATOR(Positive)           \
+	BO_ENUMERATE_UNARY_OPERATOR(Negative)           \
+	BO_ENUMERATE_UNARY_OPERATOR(PointerDereference) \
+	BO_ENUMERATE_UNARY_OPERATOR(AddressOf)
+
+enum class UnaryOperator {
+#define BO_ENUMERATE_UNARY_OPERATOR(x) x,
+	_BO_ENUMERATE_UNARY_OPERATORS
+#undef BO_ENUMERATE_UNARY_OPERATOR
+};
+
+class UnaryExpression : public Expression {
+public:
+	explicit UnaryExpression(std::shared_ptr<Expression const> operand, UnaryOperator op, Span span)
+	  : Expression(span), m_operand(std::move(operand)), m_op(op) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_operand;
+	UnaryOperator m_op;
+};
+
 class AssignmentExpression : public Expression {
 public:
 	explicit AssignmentExpression(std::shared_ptr<Expression const> lhs, std::shared_ptr<Expression const> rhs, Span span)

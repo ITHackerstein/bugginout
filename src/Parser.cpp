@@ -45,8 +45,62 @@ bool Parser::match_secondary_expression() const {
 	  || type == Token::Type::Equal;
 }
 
+Result<std::shared_ptr<AST::UnaryExpression const>, Error> Parser::parse_unary_expression() {
+	switch (m_current_token.type()) {
+	case Token::Type::Plus:
+		{
+			auto span = m_current_token.span();
+			TRY(consume());
+			auto operand = TRY(parse_primary_expression());
+			span = Span::merge(span, operand->span());
+			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::Positive, span);
+		}
+	case Token::Type::Minus:
+		{
+			auto span = m_current_token.span();
+			TRY(consume());
+			auto operand = TRY(parse_primary_expression());
+			span = Span::merge(span, operand->span());
+			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::Negative, span);
+		}
+	case Token::Type::At:
+		{
+			auto span = m_current_token.span();
+			TRY(consume());
+			auto operand = TRY(parse_primary_expression());
+			span = Span::merge(span, operand->span());
+			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::PointerDereference, span);
+		}
+	case Token::Type::Ampersand:
+		{
+			auto span = m_current_token.span();
+			TRY(consume());
+			auto operand = TRY(parse_primary_expression());
+			span = Span::merge(span, operand->span());
+			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::AddressOf, span);
+		}
+	default:
+		assert(false && "Should not be here!");
+	}
+}
+
+bool Parser::match_unary_expression() const {
+	switch (m_current_token.type()) {
+	case Token::Type::Plus:
+	case Token::Type::Minus:
+	case Token::Type::At:
+	case Token::Type::Ampersand:
+		return true;
+	default:
+		return false;
+	}
+}
+
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expression() {
-	// FIXME: Handle unary opeartors
+	if (match_unary_expression()) {
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_unary_expression()));
+	}
+
 	switch (m_current_token.type()) {
 	case Token::Type::Identifier:
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_identifier()));

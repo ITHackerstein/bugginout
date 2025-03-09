@@ -42,6 +42,21 @@ void BinaryExpression::dump() const {
 	fmt::print("}}");
 }
 
+void UnaryExpression::dump() const {
+	fmt::print("{{\"node\":\"UnaryExpression\",\"span\":[{},{}],", span().start, span().end);
+	switch (m_op) {
+#define BO_ENUMERATE_UNARY_OPERATOR(x)      \
+	case UnaryOperator::x:                    \
+		fmt::print("\"operator\":\"{}\",", #x); \
+		break;
+		_BO_ENUMERATE_UNARY_OPERATORS
+#undef BO_ENUMERATE_UNARY_OPERATOR
+	}
+	fmt::print("\"operand\":");
+	m_operand->dump();
+	fmt::print("}}");
+}
+
 void AssignmentExpression::dump() const {
 	fmt::print("{{\"node\":\"AssignmentExpression\",\"span\":[{},{}],", span().start, span().end);
 	fmt::println("\"lhs\":");

@@ -5,8 +5,16 @@
 #include <fmt/core.h>
 
 Result<void, bo::Error> my_main() {
-	// FIXME: For now I have to specify stupid types because keywords are not recognized as identifiers
-	auto source = "/* simple add function */ fn add(anon a: u32, anon b: u32): u32 {\n\tvar c: mut u32; c = a + b * 2; c\n}"sv;
+	auto source = R"(
+/* A function
+   Takes two numbers and does operations */
+fn add(a: u32, b: u32): u32 {
+	var c: mut u32;
+	c = -a + 2 * +b;
+	c
+}
+)"sv;
+
 	auto parser = TRY(bo::Parser::create(source));
 	auto program = TRY(parser.parse_program());
 	program->dump();
