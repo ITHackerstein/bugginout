@@ -14,10 +14,10 @@ auto format_as(Token::Type token_type) -> std::string {
 		_BO_ENUMERATE_TOKENS
 #undef BO_ENUMERATE_TOKEN
 #undef BO_ENUMERATE_KEYWORD
+	default:
+		// NOTE: This can't happen
+		return ""s;
 	}
-
-	// NOTE: This can't happen
-	return ""s;
 }
 
 auto format_as(Token token) -> std::string {

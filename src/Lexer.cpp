@@ -63,9 +63,7 @@ bool Lexer::is_identifier_middle() const {
 	return is_identifier_start() || std::isdigit(m_current_character);
 }
 
-Result<Token, Error> Lexer::lex_integer_literal() {
-	auto token_start = m_current_position - 1;
-
+Result<Token::Type, Error> Lexer::lex_integer_literal() {
 	auto prefix_might_be_next = m_current_character == '0';
 	advance();
 
@@ -97,26 +95,32 @@ Result<Token, Error> Lexer::lex_integer_literal() {
 
 	if (m_current_character == '_') {
 		advance();
-		advance_if_any_of_is_next(SUFFIXES.begin(), SUFFIXES.end());
+		if (!is_identifier_start()) {
+			return Error { "unexpected character while parsing integer literal suffix", Span { m_current_position - 1, m_current_position - 1 } };
+		}
+
+		lex_identifier();
 	}
 
-	return Token { token_type, m_source.substr(token_start, m_current_position - token_start - 1), { token_start, m_current_position - 2 } };
+	return token_type;
 }
 
-Result<Token, Error> Lexer::lex_char_literal() {
+Result<void, Error> Lexer::lex_char_literal() {
+	assert(m_current_character == '\'');
+
 	auto token_start = m_current_position - 1;
 	advance();
 
 	if (is_eof()) {
-		return Error { "unexpected end of file while parsing char literal", { token_start, m_current_position - 1 } };
+		return Error { "unexpected end of file while parsing char literal", Span { token_start, m_current_position - 1 } };
 	}
 
 	if (m_current_character == '\'') {
-		return Error { "empty char literals are not valid", { token_start, m_current_position - 1 } };
+		return Error { "empty char literals are not valid", Span { token_start, m_current_position - 1 } };
 	}
 
 	if (m_current_character == '\n' || m_current_character == '\r' || m_current_character == '\t') {
-		return Error { "unexpected character inside char literal", { token_start, m_current_position - 1 } };
+		return Error { "unexpected character inside char literal", Span { token_start, m_current_position - 1 } };
 	}
 
 	auto is_escape_sequence_next = m_current_character == '\\';
@@ -131,47 +135,228 @@ Result<Token, Error> Lexer::lex_char_literal() {
 			advance();
 
 			if (m_current_character < '0' || m_current_character > '7') {
-				return Error { "invalid escape sequence inside char literal", { escape_sequence_start, m_current_position - 1 } };
+				return Error { "invalid escape sequence inside char literal", Span { escape_sequence_start, m_current_position - 1 } };
 			}
 
 			advance();
 
 			if (!std::isxdigit(m_current_character)) {
-				return Error { "invalid escape sequence inside char literal", { escape_sequence_start, m_current_position - 1 } };
+				return Error { "invalid escape sequence inside char literal", Span { escape_sequence_start, m_current_position - 1 } };
 			}
 
 			advance();
 		} else {
-			return Error { "invalid escape sequence inside char literal", { escape_sequence_start, m_current_position - 1 } };
+			return Error { "invalid escape sequence inside char literal", Span { escape_sequence_start, m_current_position - 1 } };
 		}
 	}
 
 	if (m_current_character != '\'') {
-		return Error { "missing closing single quote for char literal", { token_start, m_current_position - 1 } };
+		return Error { "missing closing single quote for char literal", Span { token_start, m_current_position - 1 } };
 	}
-
 	advance();
 
-	return Token { Token::Type::CharLiteral, m_source.substr(token_start, m_current_position - token_start - 1), { token_start, m_current_position - 2 } };
+	return {};
 }
 
-Result<Token, Error> Lexer::lex_identifier_or_keyword() {
-	auto token_start = m_current_position - 1;
-	auto token_type = Token::Type::Identifier;
+void Lexer::lex_identifier() {
+	assert(is_identifier_start());
 
 	do {
 		advance();
 	} while (is_identifier_middle());
+}
 
-	auto token_value = m_source.substr(token_start, m_current_position - token_start - 1);
-#define BO_ENUMERATE_KEYWORD(x)       \
-	if (token_value == #x##sv) {        \
-		token_type = Token::Type::KW_##x; \
+Result<Token::Type, Error> Lexer::lex_operator() {
+	if (m_current_character == '&') {
+		advance();
+		if (m_current_character == '&') {
+			advance();
+			if (m_current_character == '=') {
+				advance();
+				return Token::Type::DoubleAmpersandEquals;
+			}
+			return Token::Type::DoubleAmpersand;
+		}
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::AmpersandEquals;
+		}
+		return Token::Type::Ampersand;
 	}
-	_BO_ENUMERATE_KEYWORDS
-#undef BO_ENUMERATE_KEYWORD
 
-	return Token { token_type, token_value, { token_start, m_current_position - 2 } };
+	if (m_current_character == '*') {
+		advance();
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::AsteriskEquals;
+		}
+		return Token::Type::Asterisk;
+	}
+
+	if (m_current_character == '@') {
+		advance();
+		return Token::Type::At;
+	}
+
+	if (m_current_character == '^') {
+		advance();
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::CircumflexEquals;
+		}
+		return Token::Type::Circumflex;
+	}
+
+	if (m_current_character == ':') {
+		advance();
+		return Token::Type::Colon;
+	}
+
+	if (m_current_character == ',') {
+		advance();
+		return Token::Type::Comma;
+	}
+
+	if (m_current_character == '=') {
+		advance();
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::DoubleEquals;
+		}
+		return Token::Type::Equals;
+	}
+
+	if (m_current_character == '{') {
+		advance();
+		return Token::Type::LeftCurlyBracket;
+	}
+
+	if (m_current_character == '(') {
+		advance();
+		return Token::Type::LeftParenthesis;
+	}
+
+	if (m_current_character == '-') {
+		advance();
+		if (m_current_character == '-') {
+			advance();
+			return Token::Type::MinusMinus;
+		}
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::MinusEquals;
+		}
+		return Token::Type::Minus;
+	}
+
+	if (m_current_character == '%') {
+		advance();
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::PercentEquals;
+		}
+		return Token::Type::Percent;
+	}
+
+	if (m_current_character == '+') {
+		advance();
+		if (m_current_character == '+') {
+			advance();
+			return Token::Type::PlusPlus;
+		}
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::PlusEquals;
+		}
+		return Token::Type::Plus;
+	}
+
+	if (m_current_character == '}') {
+		advance();
+		return Token::Type::RightCurlyBracket;
+	}
+
+	if (m_current_character == ')') {
+		advance();
+		return Token::Type::RightParenthesis;
+	}
+
+	if (m_current_character == ';') {
+		advance();
+		return Token::Type::Semicolon;
+	}
+
+	if (m_current_character == '/') {
+		advance();
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::SolidusEquals;
+		}
+		return Token::Type::Solidus;
+	}
+
+	if (m_current_character == '!') {
+		advance();
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::ExclamationMarkEquals;
+		}
+		return Token::Type::ExclamationMark;
+	}
+
+	if (m_current_character == '~') {
+		advance();
+		return Token::Type::Tilde;
+	}
+
+	if (m_current_character == '<') {
+		advance();
+		if (m_current_character == '<') {
+			advance();
+			if (m_current_character == '=') {
+				advance();
+				return Token::Type::LeftShiftEquals;
+			}
+			return Token::Type::LeftShift;
+		}
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::LessThanEquals;
+		}
+		return Token::Type::LessThan;
+	}
+
+	if (m_current_character == '>') {
+		advance();
+		if (m_current_character == '>') {
+			advance();
+			if (m_current_character == '=') {
+				advance();
+				return Token::Type::RightShiftEquals;
+			}
+			return Token::Type::RightShift;
+		}
+		if (m_current_character == '=') {
+			advance();
+			return Token::Type::GreaterThanEquals;
+		}
+		return Token::Type::GreaterThan;
+	}
+
+	if (m_current_character == '|') {
+		advance();
+		if (m_current_character == '|') {
+			advance();
+			if (m_current_character == '=') {
+				advance();
+				return Token::Type::DoublePipeEquals;
+			}
+			return Token::Type::DoublePipe;
+		}
+		return Token::Type::Pipe;
+	}
+
+	return Error { "unexpected character while lexing", Span { m_current_position - 1, m_current_position - 1 } };
 }
 
 Result<Token, Error> Lexer::next_token() {
@@ -201,64 +386,36 @@ Result<Token, Error> Lexer::next_token() {
 	}
 
 	if (is_eof()) {
-		return Token { Token::Type::EndOfFile, ""sv, { m_current_position, m_current_position } };
-	} else if (std::isdigit(m_current_character)) {
-		return lex_integer_literal();
-	} else if (m_current_character == '\'') {
-		return lex_char_literal();
-	} else if (is_identifier_start()) {
-		return lex_identifier_or_keyword();
-	} else if (m_current_character == '&') {
-		advance();
-		return Token { Token::Type::Ampersand, "&"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '*') {
-		advance();
-		return Token { Token::Type::Asterisk, "*"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '@') {
-		advance();
-		return Token { Token::Type::At, "@"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '^') {
-		advance();
-		return Token { Token::Type::Circumflex, "^"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == ':') {
-		advance();
-		return Token { Token::Type::Colon, ":"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == ',') {
-		advance();
-		return Token { Token::Type::Comma, ","sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '=') {
-		advance();
-		return Token { Token::Type::Equal, "="sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '{') {
-		advance();
-		return Token { Token::Type::LeftCurlyBracket, "{"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '(') {
-		advance();
-		return Token { Token::Type::LeftParenthesis, "("sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '-') {
-		advance();
-		return Token { Token::Type::Minus, "-"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '%') {
-		advance();
-		return Token { Token::Type::Percent, "%"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '+') {
-		advance();
-		return Token { Token::Type::Plus, "+"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '}') {
-		advance();
-		return Token { Token::Type::RightCurlyBracket, "}"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == ')') {
-		advance();
-		return Token { Token::Type::RightParenthesis, ")"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == ';') {
-		advance();
-		return Token { Token::Type::Semicolon, ";"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else if (m_current_character == '/') {
-		advance();
-		return Token { Token::Type::Solidus, "/"sv, { m_current_position - 2, m_current_position - 2 } };
-	} else {
-		return Error { "unexpected character while lexing", Span { m_current_position - 1, m_current_position - 1 } };
+		return Token { Token::Type::EndOfFile, ""sv, Span { m_current_position, m_current_position } };
 	}
+
+	Token::Type token_type;
+	auto token_start = m_current_position - 1;
+
+	if (std::isdigit(m_current_character)) {
+		token_type = lex_integer_literal();
+	} else if (m_current_character == '\'') {
+		TRY(lex_char_literal());
+		token_type = Token::Type::CharLiteral;
+	} else if (is_identifier_start()) {
+		lex_identifier();
+		token_type = Token::Type::Identifier;
+	} else {
+		token_type = TRY(lex_operator());
+	}
+
+	auto token_value = m_source.substr(token_start, m_current_position - token_start - 1);
+
+	if (token_type == Token::Type::Identifier) {
+#define BO_ENUMERATE_KEYWORD(x)       \
+	if (token_value == #x##sv) {        \
+		token_type = Token::Type::KW_##x; \
+	}
+		_BO_ENUMERATE_KEYWORDS
+#undef BO_ENUMERATE_KEYWORD
+	}
+
+	return Token { token_type, token_value, Span { token_start, m_current_position - 2 } };
 }
 
 }

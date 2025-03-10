@@ -24,12 +24,10 @@ private:
 	bool is_identifier_start() const;
 	bool is_identifier_middle() const;
 
-	template<typename Iterator>
-	bool advance_if_any_of_is_next(Iterator first, Iterator last);
-
-	Result<Token, Error> lex_integer_literal();
-	Result<Token, Error> lex_char_literal();
-	Result<Token, Error> lex_identifier_or_keyword();
+	Result<Token::Type, Error> lex_integer_literal();
+	Result<void, Error> lex_char_literal();
+	void lex_identifier();
+	Result<Token::Type, Error> lex_operator();
 
 	std::string_view m_source;
 	char m_current_character;

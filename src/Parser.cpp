@@ -37,47 +37,87 @@ Result<std::shared_ptr<AST::Program const>, Error> Parser::parse_program() {
 
 bool Parser::match_secondary_expression() const {
 	auto type = m_current_token.type();
-	return type == Token::Type::Plus
-	  || type == Token::Type::Minus
+	return type == Token::Type::PlusPlus
+	  || type == Token::Type::MinusMinus
 	  || type == Token::Type::Asterisk
 	  || type == Token::Type::Solidus
 	  || type == Token::Type::Percent
-	  || type == Token::Type::Equal;
+	  || type == Token::Type::Plus
+	  || type == Token::Type::Minus
+	  || type == Token::Type::LeftShift
+	  || type == Token::Type::RightShift
+	  || type == Token::Type::LessThan
+	  || type == Token::Type::GreaterThan
+	  || type == Token::Type::LessThanEquals
+	  || type == Token::Type::GreaterThanEquals
+	  || type == Token::Type::DoubleEquals
+	  || type == Token::Type::ExclamationMarkEquals
+	  || type == Token::Type::Ampersand
+	  || type == Token::Type::Pipe
+	  || type == Token::Type::DoubleAmpersand
+	  || type == Token::Type::DoublePipe
+	  || type == Token::Type::Equals
+	  || type == Token::Type::PlusEquals
+	  || type == Token::Type::MinusEquals
+	  || type == Token::Type::AsteriskEquals
+	  || type == Token::Type::SolidusEquals
+	  || type == Token::Type::PercentEquals
+	  || type == Token::Type::LeftShiftEquals
+	  || type == Token::Type::RightShiftEquals
+	  || type == Token::Type::AmpersandEquals
+	  || type == Token::Type::CircumflexEquals
+	  || type == Token::Type::PipeEquals
+	  || type == Token::Type::DoubleAmpersandEquals
+	  || type == Token::Type::DoublePipeEquals;
 }
 
-Result<std::shared_ptr<AST::UnaryExpression const>, Error> Parser::parse_unary_expression() {
+Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_unary_expression() {
+#define MAKE_UNARY_EXPRESSION(operator_)                                                                                                                           \
+	{                                                                                                                                                                \
+		auto span = m_current_token.span();                                                                                                                            \
+		TRY(consume());                                                                                                                                                \
+		auto operand = TRY(parse_primary_expression());                                                                                                                \
+		span = Span::merge(span, operand->span());                                                                                                                     \
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::operator_, span)); \
+	}
+
+#define MAKE_UPDATE_EXPRESSION(operator_)                                                                                                                                  \
+	{                                                                                                                                                                        \
+		auto span = m_current_token.span();                                                                                                                                    \
+		TRY(consume());                                                                                                                                                        \
+                                                                                                                                                                           \
+		auto operand                                                                                                                                                           \
+		  = TRY(parse_primary_expression());                                                                                                                                   \
+		span = Span::merge(span, operand->span());                                                                                                                             \
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::UpdateExpression const>(std::move(operand), AST::UpdateOperator::operator_, true, span)); \
+	}
+
 	switch (m_current_token.type()) {
+	case Token::Type::PlusPlus:
+		MAKE_UPDATE_EXPRESSION(Increment);
+	case Token::Type::MinusMinus:
+		MAKE_UPDATE_EXPRESSION(Decrement);
 	case Token::Type::Plus:
-		{
-			auto span = m_current_token.span();
-			TRY(consume());
-			auto operand = TRY(parse_primary_expression());
-			span = Span::merge(span, operand->span());
-			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::Positive, span);
-		}
+		MAKE_UNARY_EXPRESSION(Positive);
 	case Token::Type::Minus:
-		{
-			auto span = m_current_token.span();
-			TRY(consume());
-			auto operand = TRY(parse_primary_expression());
-			span = Span::merge(span, operand->span());
-			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::Negative, span);
-		}
+		MAKE_UNARY_EXPRESSION(Negative);
+	case Token::Type::ExclamationMark:
+		MAKE_UNARY_EXPRESSION(LogicalNot);
+	case Token::Type::Tilde:
+		MAKE_UNARY_EXPRESSION(BitwiseNot);
 	case Token::Type::At:
 		{
 			auto span = m_current_token.span();
-			TRY(consume());
 			auto operand = TRY(parse_primary_expression());
 			span = Span::merge(span, operand->span());
-			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::PointerDereference, span);
+			return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::PointerDereferenceExpression const>(std::move(operand), span));
 		}
 	case Token::Type::Ampersand:
 		{
 			auto span = m_current_token.span();
-			TRY(consume());
 			auto operand = TRY(parse_primary_expression());
 			span = Span::merge(span, operand->span());
-			return std::make_shared<AST::UnaryExpression const>(std::move(operand), AST::UnaryOperator::AddressOf, span);
+			return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::AddressOfExpression const>(std::move(operand), span));
 		}
 	default:
 		assert(false && "Should not be here!");
@@ -86,8 +126,12 @@ Result<std::shared_ptr<AST::UnaryExpression const>, Error> Parser::parse_unary_e
 
 bool Parser::match_unary_expression() const {
 	switch (m_current_token.type()) {
+	case Token::Type::PlusPlus:
+	case Token::Type::MinusMinus:
 	case Token::Type::Plus:
 	case Token::Type::Minus:
+	case Token::Type::ExclamationMark:
+	case Token::Type::Tilde:
 	case Token::Type::At:
 	case Token::Type::Ampersand:
 		return true;
@@ -98,7 +142,7 @@ bool Parser::match_unary_expression() const {
 
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expression() {
 	if (match_unary_expression()) {
-		return std::static_pointer_cast<AST::Expression const>(TRY(parse_unary_expression()));
+		return TRY(parse_unary_expression());
 	}
 
 	switch (m_current_token.type()) {
@@ -111,6 +155,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_integer_literal()));
 	case Token::Type::LeftParenthesis:
 		{
+			// FIXME: Should add the parenthesis to the span
 			TRY(consume());
 			auto expression = TRY(parse_expression());
 			TRY(consume(Token::Type::RightParenthesis));
@@ -121,20 +166,88 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 	}
 }
 
-std::shared_ptr<AST::Expression const> Parser::parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, std::shared_ptr<AST::Expression const> rhs, Token::Type operator_) {
-	switch (operator_) {
-	case Token::Type::Plus:
-		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Addition, Span::merge(lhs->span(), rhs->span()));
-	case Token::Type::Minus:
-		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Subtraction, Span::merge(lhs->span(), rhs->span()));
+Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, Token const& operator_token, unsigned minimum_precedence) {
+#define MAKE_BINARY_EXPRESSION(operator_)                                                                                                                                        \
+	{                                                                                                                                                                              \
+		auto rhs = TRY(parse_expression_inner(minimum_precedence));                                                                                                                  \
+		auto span = Span::merge(lhs->span(), rhs->span());                                                                                                                           \
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::operator_, span)); \
+	}
+
+#define MAKE_ASSIGNMENT_EXPRESSION(operator_)                                                                                                                                            \
+	{                                                                                                                                                                                      \
+		auto rhs = TRY(parse_expression_inner(minimum_precedence));                                                                                                                          \
+		auto span = Span::merge(lhs->span(), rhs->span());                                                                                                                                   \
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::AssignmentExpression const>(std::move(lhs), std::move(rhs), AST::AssignmentOperator::operator_, span)); \
+	}
+
+	switch (operator_token.type()) {
+	case Token::Type::PlusPlus:
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::UpdateExpression const>(std::move(lhs), AST::UpdateOperator::Increment, false, Span::merge(lhs->span(), operator_token.span())));
+	case Token::Type::MinusMinus:
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::UpdateExpression const>(std::move(lhs), AST::UpdateOperator::Decrement, false, Span::merge(lhs->span(), operator_token.span())));
 	case Token::Type::Asterisk:
-		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Multiplication, Span::merge(lhs->span(), rhs->span()));
+		MAKE_BINARY_EXPRESSION(Multiplication);
 	case Token::Type::Solidus:
-		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Division, Span::merge(lhs->span(), rhs->span()));
+		MAKE_BINARY_EXPRESSION(Division);
 	case Token::Type::Percent:
-		return std::make_shared<AST::BinaryExpression const>(std::move(lhs), std::move(rhs), AST::BinaryOperator::Modulo, Span::merge(lhs->span(), rhs->span()));
-	case Token::Type::Equal:
-		return std::make_shared<AST::AssignmentExpression const>(std::move(lhs), std::move(rhs), Span::merge(lhs->span(), rhs->span()));
+		MAKE_BINARY_EXPRESSION(Modulo);
+	case Token::Type::Plus:
+		MAKE_BINARY_EXPRESSION(Addition);
+	case Token::Type::Minus:
+		MAKE_BINARY_EXPRESSION(Subtraction);
+	case Token::Type::LeftShift:
+		MAKE_BINARY_EXPRESSION(BitwiseLeftShift);
+	case Token::Type::RightShift:
+		MAKE_BINARY_EXPRESSION(BitwiseRightShift);
+	case Token::Type::LessThan:
+		MAKE_BINARY_EXPRESSION(LessThan);
+	case Token::Type::GreaterThan:
+		MAKE_BINARY_EXPRESSION(GreaterThan);
+	case Token::Type::LessThanEquals:
+		MAKE_BINARY_EXPRESSION(LessThanOrEqualTo);
+	case Token::Type::GreaterThanEquals:
+		MAKE_BINARY_EXPRESSION(GreaterThanOrEqualTo);
+	case Token::Type::DoubleEquals:
+		MAKE_BINARY_EXPRESSION(EqualTo);
+	case Token::Type::ExclamationMarkEquals:
+		MAKE_BINARY_EXPRESSION(NotEqualTo);
+	case Token::Type::Ampersand:
+		MAKE_BINARY_EXPRESSION(BitwiseAnd);
+	case Token::Type::Circumflex:
+		MAKE_BINARY_EXPRESSION(BitwiseXor);
+	case Token::Type::Pipe:
+		MAKE_BINARY_EXPRESSION(BitwiseOr);
+	case Token::Type::DoubleAmpersand:
+		MAKE_BINARY_EXPRESSION(LogicalAnd);
+	case Token::Type::DoublePipe:
+		MAKE_BINARY_EXPRESSION(LogicalOr);
+	case Token::Type::Equals:
+		MAKE_ASSIGNMENT_EXPRESSION(Assignment);
+	case Token::Type::PlusEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(AdditionAssignment);
+	case Token::Type::MinusEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(SubtractionAssignment);
+	case Token::Type::AsteriskEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(MultiplicationAssignment);
+	case Token::Type::SolidusEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(DivisionAssignment);
+	case Token::Type::PercentEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(ModuloAssignment);
+	case Token::Type::LeftShiftEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(BitwiseLeftShiftAssignment);
+	case Token::Type::RightShiftEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(BitwiseRightShiftAssignment);
+	case Token::Type::AmpersandEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(BitwiseAndAssignment);
+	case Token::Type::CircumflexEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(BitwiseXorAssignment);
+	case Token::Type::PipeEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(BitwiseOrAssignment);
+	case Token::Type::DoubleAmpersandEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(LogicalAndAssignment);
+	case Token::Type::DoublePipeEquals:
+		MAKE_ASSIGNMENT_EXPRESSION(LogicalOrAssignment);
 	default:
 		assert(false && "Should not be here!");
 	}
@@ -144,19 +257,18 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_i
 	auto result = TRY(parse_primary_expression());
 
 	while (match_secondary_expression()) {
-		auto operator_ = m_current_token.type();
-		auto operator_precedence = OperatorData::precedence_of(operator_);
+		auto operator_token = m_current_token;
+		auto operator_precedence = OperatorData::precedence_of(operator_token.type());
 		if (operator_precedence < minimum_precedence) {
 			break;
 		}
 
-		if (OperatorData::associativity_of(m_current_token.type()) == Associativity::Left) {
+		if (OperatorData::associativity_of(operator_token.type()) == Associativity::Left) {
 			++operator_precedence;
 		}
 
 		TRY(consume());
-		auto rhs = TRY(parse_expression_inner(operator_precedence));
-		result = parse_secondary_expression(std::move(result), std::move(rhs), operator_);
+		result = TRY(parse_secondary_expression(std::move(result), operator_token, operator_precedence));
 	}
 
 	return result;
@@ -330,14 +442,14 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 	std::optional<std::shared_ptr<AST::Type const>> type;
 	std::optional<std::shared_ptr<AST::Expression const>> expression;
 
-	if (m_current_token.type() == Token::Type::Equal) {
+	if (m_current_token.type() == Token::Type::Equals) {
 		TRY(consume());
 		expression = TRY(parse_expression());
 	} else if (m_current_token.type() == Token::Type::Colon) {
 		TRY(consume());
 		type = TRY(parse_type());
 
-		if (m_current_token.type() == Token::Type::Equal) {
+		if (m_current_token.type() == Token::Type::Equals) {
 			TRY(consume());
 			expression = TRY(parse_expression());
 		}
@@ -349,5 +461,4 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 	span = Span::merge(span, m_current_token.span());
 	return std::make_shared<AST::VariableDeclarationStatement const>(std::move(identifier), std::move(type), std::move(expression), span);
 }
-
 }

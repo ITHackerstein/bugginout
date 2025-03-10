@@ -18,9 +18,9 @@ private:
 	bool match_unary_expression() const;
 	bool match_secondary_expression() const;
 
-	Result<std::shared_ptr<AST::UnaryExpression const>, Error> parse_unary_expression();
+	Result<std::shared_ptr<AST::Expression const>, Error> parse_unary_expression();
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_primary_expression();
-	std::shared_ptr<AST::Expression const> parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, std::shared_ptr<AST::Expression const> rhs, Token::Type left);
+	Result<std::shared_ptr<AST::Expression const>, Error> parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, Token const& operator_token, unsigned minimum_precedence);
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression_inner(unsigned minimum_precedence);
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression();
 	Result<std::shared_ptr<AST::Statement const>, Error> parse_statement();

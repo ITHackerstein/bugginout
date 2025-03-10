@@ -59,16 +59,54 @@ void UnaryExpression::dump() const {
 
 void AssignmentExpression::dump() const {
 	fmt::print("{{\"node\":\"AssignmentExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\"lhs\":");
+	switch (m_op) {
+#define BO_ENUMERATE_ASSIGNMENT_OPERATOR(x) \
+	case AssignmentOperator::x:               \
+		fmt::print("\"operator\":\"{}\",", #x); \
+		break;
+		_BO_ENUMERATE_ASSIGNMENT_OPERATORS
+#undef BO_ENUMERATE_ASSIGNMENT_OPERATOR
+	}
+	fmt::print("\"lhs\":");
 	m_lhs->dump();
 	fmt::print(",\"rhs\":");
 	m_rhs->dump();
-	fmt::println("}}");
+	fmt::print("}}");
+}
+
+void UpdateExpression::dump() const {
+	fmt::print("{{\"node\":\"UpdateExpression\",\"span\":[{},{}],", span().start, span().end);
+	switch (m_op) {
+#define BO_ENUMERATE_UPDATE_OPERATOR(x)     \
+	case UpdateOperator::x:                   \
+		fmt::print("\"operator\":\"{}\",", #x); \
+		break;
+		_BO_ENUMERATE_UPDATE_OPERATORS
+#undef BO_ENUMERATE_UPDATE_OPERATOR
+	}
+	fmt::print("\"is_prefixed\":{}", m_is_prefixed);
+	fmt::print("\"operand\":");
+	m_operand->dump();
+	fmt::print("}}");
+}
+
+void PointerDereferenceExpression::dump() const {
+	fmt::print("{{\"node\":\"PointerDereferenceExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print(",\"operand\":");
+	m_operand->dump();
+	fmt::print("}}");
+}
+
+void AddressOfExpression::dump() const {
+	fmt::print("{{\"node\":\"AddressOfExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print(",\"operand\":");
+	m_operand->dump();
+	fmt::print("}}");
 }
 
 void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\"identifier\":");
+	fmt::print("\"identifier\":");
 	m_identifier->dump();
 	if (*m_type) {
 		fmt::print(",\"type\":");
@@ -79,7 +117,7 @@ void VariableDeclarationStatement::dump() const {
 		fmt::print(",\"expression\":");
 		(*m_expression)->dump();
 	}
-	fmt::println("}}");
+	fmt::print("}}");
 }
 
 void BlockExpression::dump() const {
@@ -118,12 +156,12 @@ void FunctionDeclarationStatement::dump() const {
 
 void IfExpression::dump() const {
 	fmt::print("{{\"node\":\"IfExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\"condition\":");
+	fmt::print("\"condition\":");
 	m_condition->dump();
-	fmt::println(",\"then_block\":");
+	fmt::print(",\"then_block\":");
 	m_then_block->dump();
 	if (m_else_block) {
-		fmt::println(",\"else_block\":");
+		fmt::print(",\"else_block\":");
 		(*m_else_block)->dump();
 	}
 	fmt::print("}}");
@@ -131,34 +169,34 @@ void IfExpression::dump() const {
 
 void InfiniteForExpression::dump() const {
 	fmt::print("{{\"node\":\"InfiniteForExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\"body\":");
+	fmt::print("\"body\":");
 	m_body->dump();
 	fmt::print("}}");
 }
 
 void ForWithConditionExpression::dump() const {
 	fmt::print("{{\"node\":\"ForWithConditionExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\",condition\":");
+	fmt::print("\",condition\":");
 	m_condition->dump();
-	fmt::println("\",body\":");
+	fmt::print("\",body\":");
 	m_body->dump();
 	fmt::print("}}");
 }
 
 void ForWithRangeExpression::dump() const {
 	fmt::print("{{\"node\":\"ForWithRangeExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\",range_variable\":");
+	fmt::print("\",range_variable\":");
 	m_range_variable->dump();
-	fmt::println("\",range_expression\":");
+	fmt::print("\",range_expression\":");
 	m_range_expression->dump();
 	fmt::print("}}");
 }
 
 void FunctionCallExpression::dump() const {
 	fmt::print("{{\"node\":\"FunctionCallExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::println("\"name\":");
+	fmt::print("\"name\":");
 	m_name->dump();
-	fmt::println(",\"arguments\":[");
+	fmt::print(",\"arguments\":[");
 	for (std::size_t i = 0; i < m_arguments.size(); ++i) {
 		auto const& argument = m_arguments[i];
 

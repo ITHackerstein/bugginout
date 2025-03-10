@@ -87,12 +87,25 @@ private:
 	std::string_view m_id;
 };
 
-#define _BO_ENUMERATE_BINARY_OPERATORS         \
-	BO_ENUMERATE_BINARY_OPERATOR(Addition)       \
-	BO_ENUMERATE_BINARY_OPERATOR(Subtraction)    \
-	BO_ENUMERATE_BINARY_OPERATOR(Multiplication) \
-	BO_ENUMERATE_BINARY_OPERATOR(Division)       \
-	BO_ENUMERATE_BINARY_OPERATOR(Modulo)
+#define _BO_ENUMERATE_BINARY_OPERATORS               \
+	BO_ENUMERATE_BINARY_OPERATOR(Addition)             \
+	BO_ENUMERATE_BINARY_OPERATOR(Subtraction)          \
+	BO_ENUMERATE_BINARY_OPERATOR(Multiplication)       \
+	BO_ENUMERATE_BINARY_OPERATOR(Division)             \
+	BO_ENUMERATE_BINARY_OPERATOR(Modulo)               \
+	BO_ENUMERATE_BINARY_OPERATOR(BitwiseLeftShift)     \
+	BO_ENUMERATE_BINARY_OPERATOR(BitwiseRightShift)    \
+	BO_ENUMERATE_BINARY_OPERATOR(LessThan)             \
+	BO_ENUMERATE_BINARY_OPERATOR(GreaterThan)          \
+	BO_ENUMERATE_BINARY_OPERATOR(LessThanOrEqualTo)    \
+	BO_ENUMERATE_BINARY_OPERATOR(GreaterThanOrEqualTo) \
+	BO_ENUMERATE_BINARY_OPERATOR(EqualTo)              \
+	BO_ENUMERATE_BINARY_OPERATOR(NotEqualTo)           \
+	BO_ENUMERATE_BINARY_OPERATOR(BitwiseAnd)           \
+	BO_ENUMERATE_BINARY_OPERATOR(BitwiseXor)           \
+	BO_ENUMERATE_BINARY_OPERATOR(BitwiseOr)            \
+	BO_ENUMERATE_BINARY_OPERATOR(LogicalAnd)           \
+	BO_ENUMERATE_BINARY_OPERATOR(LogicalOr)
 
 enum class BinaryOperator {
 #define BO_ENUMERATE_BINARY_OPERATOR(x) x,
@@ -113,11 +126,11 @@ private:
 	BinaryOperator m_op;
 };
 
-#define _BO_ENUMERATE_UNARY_OPERATORS             \
-	BO_ENUMERATE_UNARY_OPERATOR(Positive)           \
-	BO_ENUMERATE_UNARY_OPERATOR(Negative)           \
-	BO_ENUMERATE_UNARY_OPERATOR(PointerDereference) \
-	BO_ENUMERATE_UNARY_OPERATOR(AddressOf)
+#define _BO_ENUMERATE_UNARY_OPERATORS     \
+	BO_ENUMERATE_UNARY_OPERATOR(Positive)   \
+	BO_ENUMERATE_UNARY_OPERATOR(Negative)   \
+	BO_ENUMERATE_UNARY_OPERATOR(LogicalNot) \
+	BO_ENUMERATE_UNARY_OPERATOR(BitwiseNot)
 
 enum class UnaryOperator {
 #define BO_ENUMERATE_UNARY_OPERATOR(x) x,
@@ -137,16 +150,83 @@ private:
 	UnaryOperator m_op;
 };
 
+#define _BO_ENUMERATE_ASSIGNMENT_OPERATORS                      \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(Assignment)                  \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(AdditionAssignment)          \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(SubtractionAssignment)       \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(MultiplicationAssignment)    \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(DivisionAssignment)          \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(ModuloAssignment)            \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(BitwiseLeftShiftAssignment)  \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(BitwiseRightShiftAssignment) \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(BitwiseAndAssignment)        \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(BitwiseXorAssignment)        \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(BitwiseOrAssignment)         \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(LogicalAndAssignment)        \
+	BO_ENUMERATE_ASSIGNMENT_OPERATOR(LogicalOrAssignment)
+
+enum class AssignmentOperator {
+#define BO_ENUMERATE_ASSIGNMENT_OPERATOR(x) x,
+	_BO_ENUMERATE_ASSIGNMENT_OPERATORS
+#undef BO_ENUMERATE_ASSIGNMENT_OPERATOR
+};
+
 class AssignmentExpression : public Expression {
 public:
-	explicit AssignmentExpression(std::shared_ptr<Expression const> lhs, std::shared_ptr<Expression const> rhs, Span span)
-	  : Expression(span), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)) {}
+	explicit AssignmentExpression(std::shared_ptr<Expression const> lhs, std::shared_ptr<Expression const> rhs, AssignmentOperator op, Span span)
+	  : Expression(span), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
 
 	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_lhs;
 	std::shared_ptr<Expression const> m_rhs;
+	AssignmentOperator m_op;
+};
+
+#define _BO_ENUMERATE_UPDATE_OPERATORS    \
+	BO_ENUMERATE_UPDATE_OPERATOR(Increment) \
+	BO_ENUMERATE_UPDATE_OPERATOR(Decrement)
+
+enum class UpdateOperator {
+#define BO_ENUMERATE_UPDATE_OPERATOR(x) x,
+	_BO_ENUMERATE_UPDATE_OPERATORS
+#undef BO_ENUMERATE_UPDATE_OPERATOR
+};
+
+class UpdateExpression : public Expression {
+public:
+	explicit UpdateExpression(std::shared_ptr<Expression const> operand, UpdateOperator op, bool is_prefixed, Span span)
+	  : Expression(span), m_operand(std::move(operand)), m_op(op), m_is_prefixed(is_prefixed) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_operand;
+	UpdateOperator m_op;
+	bool m_is_prefixed;
+};
+
+class PointerDereferenceExpression : public Expression {
+public:
+	explicit PointerDereferenceExpression(std::shared_ptr<Expression const> operand, Span span)
+	  : Expression(span), m_operand(std::move(operand)) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_operand;
+};
+
+class AddressOfExpression : public Expression {
+public:
+	explicit AddressOfExpression(std::shared_ptr<Expression const> operand, Span span)
+	  : Expression(span), m_operand(std::move(operand)) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_operand;
 };
 
 class VariableDeclarationStatement : public Statement {
