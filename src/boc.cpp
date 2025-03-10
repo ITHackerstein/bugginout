@@ -8,9 +8,9 @@ Result<void, bo::Error> my_main() {
 	auto source = R"(
 /* A function
    Takes two numbers and does operations */
-fn add(a: u32, b: u32): u32 {
+fn f(a: u32, b: u32): u32 {
 	var c: mut u32;
-	c = -a + 2 * +b;
+	c = a = b << 2 + b * 2 - 3 / 2;
 	c
 }
 )"sv;

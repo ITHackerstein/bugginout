@@ -22,23 +22,6 @@ void Lexer::advance() {
 	++m_current_position;
 }
 
-template<typename Iterator>
-bool Lexer::advance_if_any_of_is_next(Iterator first, Iterator last) {
-	for (Iterator it = first; it != last; ++it) {
-		auto needle = *it;
-
-		if (m_source.size() + 1 >= m_current_position + needle.size() && m_source.substr(m_current_position - 1, needle.size()) == needle) {
-			for (std::size_t _ = 0; _ < needle.size(); ++_) {
-				advance();
-			}
-
-			return true;
-		}
-	}
-
-	return false;
-}
-
 bool Lexer::is_eof() const {
 	return m_current_character == -1;
 }
@@ -393,7 +376,7 @@ Result<Token, Error> Lexer::next_token() {
 	auto token_start = m_current_position - 1;
 
 	if (std::isdigit(m_current_character)) {
-		token_type = lex_integer_literal();
+		token_type = TRY(lex_integer_literal());
 	} else if (m_current_character == '\'') {
 		TRY(lex_char_literal());
 		token_type = Token::Type::CharLiteral;
