@@ -73,11 +73,26 @@ public:
 
 	static constexpr Associativity associativity_of(Token::Type type) {
 		switch (type) {
-		case Token::Type::Plus:
-		case Token::Type::Minus:
+		case Token::Type::PlusPlus:
+		case Token::Type::MinusMinus:
 		case Token::Type::Asterisk:
 		case Token::Type::Solidus:
 		case Token::Type::Percent:
+		case Token::Type::Plus:
+		case Token::Type::Minus:
+		case Token::Type::LeftShift:
+		case Token::Type::RightShift:
+		case Token::Type::LessThan:
+		case Token::Type::GreaterThan:
+		case Token::Type::LessThanEquals:
+		case Token::Type::GreaterThanEquals:
+		case Token::Type::DoubleEquals:
+		case Token::Type::ExclamationMarkEquals:
+		case Token::Type::Ampersand:
+		case Token::Type::Circumflex:
+		case Token::Type::Pipe:
+		case Token::Type::DoubleAmpersand:
+		case Token::Type::DoublePipe:
 			return Associativity::Left;
 		default:
 			return Associativity::Right;
