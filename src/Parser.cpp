@@ -439,8 +439,8 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 	auto span = m_current_token.span();
 	TRY(consume(Token::Type::KW_var));
 	auto identifier = TRY(parse_identifier());
-	std::optional<std::shared_ptr<AST::Type const>> type;
-	std::optional<std::shared_ptr<AST::Expression const>> expression;
+	std::shared_ptr<AST::Type const> type = nullptr;
+	std::shared_ptr<AST::Expression const> expression = nullptr;
 
 	if (m_current_token.type() == Token::Type::Equals) {
 		TRY(consume());
@@ -461,4 +461,5 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 	span = Span::merge(span, m_current_token.span());
 	return std::make_shared<AST::VariableDeclarationStatement const>(std::move(identifier), std::move(type), std::move(expression), span);
 }
+
 }

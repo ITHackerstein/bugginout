@@ -231,15 +231,15 @@ private:
 
 class VariableDeclarationStatement : public Statement {
 public:
-	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::optional<std::shared_ptr<Type const>> type, std::optional<std::shared_ptr<Expression const>> expression, Span span)
+	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> expression, Span span)
 	  : Statement(span), m_identifier(std::move(identifier)), m_type(type), m_expression(std::move(expression)) {}
 
 	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Identifier const> m_identifier;
-	std::optional<std::shared_ptr<Type const>> m_type;
-	std::optional<std::shared_ptr<Expression const>> m_expression;
+	std::shared_ptr<Type const> m_type;
+	std::shared_ptr<Expression const> m_expression;
 };
 
 class BlockExpression : public Expression {
@@ -279,15 +279,15 @@ private:
 
 class IfExpression : public Expression {
 public:
-	explicit IfExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> then_block, std::optional<std::shared_ptr<BlockExpression const>> else_block, Span span)
-	  : Expression(span), m_condition(std::move(condition)), m_then_block(std::move(then_block)), m_else_block(std::move(else_block)) {}
+	explicit IfExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> then, std::shared_ptr<Expression const> else_, Span span)
+	  : Expression(span), m_condition(std::move(condition)), m_then(std::move(then)), m_else(std::move(else_)) {}
 
 	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_condition;
-	std::shared_ptr<BlockExpression const> m_then_block;
-	std::optional<std::shared_ptr<BlockExpression const>> m_else_block;
+	std::shared_ptr<BlockExpression const> m_then;
+	std::shared_ptr<Expression const> m_else;
 };
 
 class ForExpression : public Expression {
@@ -330,7 +330,7 @@ private:
 };
 
 struct FunctionArgument {
-	std::optional<std::shared_ptr<Identifier const>> name;
+	std::shared_ptr<Identifier const> name;
 	std::shared_ptr<Expression const> value;
 };
 

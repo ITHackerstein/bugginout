@@ -30,12 +30,12 @@ void BinaryExpression::dump() const {
 	switch (m_op) {
 #define BO_ENUMERATE_BINARY_OPERATOR(x)     \
 	case BinaryOperator::x:                   \
-		fmt::print("\"operator\":\"{}\",", #x); \
+		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_BINARY_OPERATORS
 #undef BO_ENUMERATE_BINARY_OPERATOR
 	}
-	fmt::print("\"lhs\":");
+	fmt::print(",\"lhs\":");
 	m_lhs->dump();
 	fmt::print(",\"rhs\":");
 	m_rhs->dump();
@@ -47,12 +47,12 @@ void UnaryExpression::dump() const {
 	switch (m_op) {
 #define BO_ENUMERATE_UNARY_OPERATOR(x)      \
 	case UnaryOperator::x:                    \
-		fmt::print("\"operator\":\"{}\",", #x); \
+		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_UNARY_OPERATORS
 #undef BO_ENUMERATE_UNARY_OPERATOR
 	}
-	fmt::print("\"operand\":");
+	fmt::print(",\"operand\":");
 	m_operand->dump();
 	fmt::print("}}");
 }
@@ -62,12 +62,12 @@ void AssignmentExpression::dump() const {
 	switch (m_op) {
 #define BO_ENUMERATE_ASSIGNMENT_OPERATOR(x) \
 	case AssignmentOperator::x:               \
-		fmt::print("\"operator\":\"{}\",", #x); \
+		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_ASSIGNMENT_OPERATORS
 #undef BO_ENUMERATE_ASSIGNMENT_OPERATOR
 	}
-	fmt::print("\"lhs\":");
+	fmt::print(",\"lhs\":");
 	m_lhs->dump();
 	fmt::print(",\"rhs\":");
 	m_rhs->dump();
@@ -79,27 +79,27 @@ void UpdateExpression::dump() const {
 	switch (m_op) {
 #define BO_ENUMERATE_UPDATE_OPERATOR(x)     \
 	case UpdateOperator::x:                   \
-		fmt::print("\"operator\":\"{}\",", #x); \
+		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_UPDATE_OPERATORS
 #undef BO_ENUMERATE_UPDATE_OPERATOR
 	}
-	fmt::print("\"is_prefixed\":{}", m_is_prefixed);
-	fmt::print("\"operand\":");
+	fmt::print(",\"is_prefixed\":{}", m_is_prefixed);
+	fmt::print(",\"operand\":");
 	m_operand->dump();
 	fmt::print("}}");
 }
 
 void PointerDereferenceExpression::dump() const {
 	fmt::print("{{\"node\":\"PointerDereferenceExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print(",\"operand\":");
+	fmt::print("\"operand\":");
 	m_operand->dump();
 	fmt::print("}}");
 }
 
 void AddressOfExpression::dump() const {
 	fmt::print("{{\"node\":\"AddressOfExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print(",\"operand\":");
+	fmt::print("\"operand\":");
 	m_operand->dump();
 	fmt::print("}}");
 }
@@ -108,14 +108,14 @@ void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"identifier\":");
 	m_identifier->dump();
-	if (*m_type) {
+	if (m_type) {
 		fmt::print(",\"type\":");
-		(*m_type)->dump();
+		m_type->dump();
 	}
 
-	if (*m_expression) {
+	if (m_expression) {
 		fmt::print(",\"expression\":");
-		(*m_expression)->dump();
+		m_expression->dump();
 	}
 	fmt::print("}}");
 }
@@ -159,10 +159,10 @@ void IfExpression::dump() const {
 	fmt::print("\"condition\":");
 	m_condition->dump();
 	fmt::print(",\"then_block\":");
-	m_then_block->dump();
-	if (m_else_block) {
+	m_then->dump();
+	if (m_else) {
 		fmt::print(",\"else_block\":");
-		(*m_else_block)->dump();
+		m_else->dump();
 	}
 	fmt::print("}}");
 }
@@ -176,18 +176,18 @@ void InfiniteForExpression::dump() const {
 
 void ForWithConditionExpression::dump() const {
 	fmt::print("{{\"node\":\"ForWithConditionExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print("\",condition\":");
+	fmt::print("\"condition\":");
 	m_condition->dump();
-	fmt::print("\",body\":");
+	fmt::print(",\"body\":");
 	m_body->dump();
 	fmt::print("}}");
 }
 
 void ForWithRangeExpression::dump() const {
 	fmt::print("{{\"node\":\"ForWithRangeExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print("\",range_variable\":");
+	fmt::print("\"range_variable\":");
 	m_range_variable->dump();
-	fmt::print("\",range_expression\":");
+	fmt::print(",\"range_expression\":");
 	m_range_expression->dump();
 	fmt::print("}}");
 }
@@ -203,7 +203,7 @@ void FunctionCallExpression::dump() const {
 		fmt::print("{{");
 		if (argument.name) {
 			fmt::print("\"name\":");
-			(*argument.name)->dump();
+			argument.name->dump();
 			fmt::print(",");
 		}
 		fmt::print("\"value\":");
