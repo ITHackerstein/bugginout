@@ -11,47 +11,81 @@ consteval std::array<unsigned, Token::count()> generate_precedence_table() {
 	std::array<unsigned, Token::count()> table;
 	table.fill(0);
 
-	table[static_cast<std::size_t>(Token::Type::Equals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::PlusEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::MinusEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::AsteriskEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::SolidusEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::PercentEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::LeftShiftEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::RightShiftEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::AmpersandEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::CircumflexEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::PipeEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::DoubleAmpersandEquals)] = 1;
-	table[static_cast<std::size_t>(Token::Type::DoublePipeEquals)] = 1;
+	unsigned p = 1;
+	{
+		table[static_cast<std::size_t>(Token::Type::Equals)] = p;
+		table[static_cast<std::size_t>(Token::Type::PlusEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::MinusEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::AsteriskEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::SolidusEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::PercentEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::LeftShiftEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::RightShiftEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::AmpersandEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::CircumflexEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::PipeEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::DoubleAmpersandEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::DoublePipeEquals)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::DoublePipe)] = 2;
+	{
+		table[static_cast<std::size_t>(Token::Type::DoublePipe)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::DoubleAmpersand)] = 3;
+	{
+		table[static_cast<std::size_t>(Token::Type::DoubleAmpersand)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::Pipe)] = 4;
+	{
+		table[static_cast<std::size_t>(Token::Type::DoubleEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::ExclamationMarkEquals)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::Circumflex)] = 5;
+	{
+		table[static_cast<std::size_t>(Token::Type::LessThan)] = p;
+		table[static_cast<std::size_t>(Token::Type::GreaterThan)] = p;
+		table[static_cast<std::size_t>(Token::Type::LessThanEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::GreaterThanEquals)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::Ampersand)] = 6;
+	{
+		table[static_cast<std::size_t>(Token::Type::Pipe)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::DoubleEquals)] = 7;
-	table[static_cast<std::size_t>(Token::Type::ExclamationMarkEquals)] = 7;
+	{
+		table[static_cast<std::size_t>(Token::Type::Circumflex)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::LessThan)] = 8;
-	table[static_cast<std::size_t>(Token::Type::GreaterThan)] = 8;
-	table[static_cast<std::size_t>(Token::Type::LessThanEquals)] = 8;
-	table[static_cast<std::size_t>(Token::Type::GreaterThanEquals)] = 8;
+	{
+		table[static_cast<std::size_t>(Token::Type::Ampersand)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::LeftShift)] = 9;
-	table[static_cast<std::size_t>(Token::Type::RightShift)] = 9;
+	{
+		table[static_cast<std::size_t>(Token::Type::LeftShift)] = p;
+		table[static_cast<std::size_t>(Token::Type::RightShift)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::Plus)] = 10;
-	table[static_cast<std::size_t>(Token::Type::Minus)] = 10;
+	{
+		table[static_cast<std::size_t>(Token::Type::Plus)] = p;
+		table[static_cast<std::size_t>(Token::Type::Minus)] = p;
+		++p;
+	}
 
-	table[static_cast<std::size_t>(Token::Type::Asterisk)] = 11;
-	table[static_cast<std::size_t>(Token::Type::Solidus)] = 11;
-	table[static_cast<std::size_t>(Token::Type::Percent)] = 11;
+	{
+		table[static_cast<std::size_t>(Token::Type::Asterisk)] = p;
+		table[static_cast<std::size_t>(Token::Type::Solidus)] = p;
+		table[static_cast<std::size_t>(Token::Type::Percent)] = p;
+		++p;
+	}
 
 	return table;
 }
