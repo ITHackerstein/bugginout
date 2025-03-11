@@ -25,6 +25,8 @@ private:
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression();
 	Result<std::shared_ptr<AST::Statement const>, Error> parse_statement();
 	Result<std::shared_ptr<AST::BlockExpression const>, Error> parse_block_expression();
+	Result<std::shared_ptr<AST::IfExpression const>, Error> parse_if_expression();
+	Result<std::shared_ptr<AST::ForExpression const>, Error> parse_for_expression();
 	Result<std::shared_ptr<AST::Type const>, Error> parse_type();
 	Result<std::shared_ptr<AST::Identifier const>, Error> parse_identifier();
 	Result<std::shared_ptr<AST::IntegerLiteral const>, Error> parse_integer_literal();

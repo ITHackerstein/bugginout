@@ -31,6 +31,9 @@ public:
 	explicit Expression(Span span)
 	  : Node(span) {}
 
+	virtual bool is_identifier() const { return false; }
+	virtual bool can_be_statement_without_semicolon() const { return false; }
+
 private:
 };
 
@@ -82,6 +85,8 @@ public:
 	  : Expression(span), m_id(id) {}
 
 	virtual void dump() const override;
+
+	virtual bool is_identifier() const override { return true; }
 
 private:
 	std::string_view m_id;
@@ -251,6 +256,7 @@ public:
 	  : Expression(span), m_statements(std::move(statements)), m_last_expression_or_statement(std::move(statement)) {}
 
 	virtual void dump() const override;
+	virtual bool can_be_statement_without_semicolon() const override { return true; }
 
 private:
 	std::vector<std::shared_ptr<Statement const>> m_statements;
@@ -283,6 +289,7 @@ public:
 	  : Expression(span), m_condition(std::move(condition)), m_then(std::move(then)), m_else(std::move(else_)) {}
 
 	virtual void dump() const override;
+	virtual bool can_be_statement_without_semicolon() const override { return true; }
 
 private:
 	std::shared_ptr<Expression const> m_condition;
@@ -291,6 +298,9 @@ private:
 };
 
 class ForExpression : public Expression {
+public:
+	virtual bool can_be_statement_without_semicolon() const override { return true; }
+
 protected:
 	explicit ForExpression(std::shared_ptr<BlockExpression const> body, Span span)
 	  : Expression(span), m_body(std::move(body)) {}

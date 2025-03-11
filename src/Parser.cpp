@@ -278,6 +278,10 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression()
 	switch (m_current_token.type()) {
 	case Token::Type::LeftCurlyBracket:
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_block_expression()));
+	case Token::Type::KW_if:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_if_expression()));
+	case Token::Type::KW_for:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_for_expression()));
 	default:
 		return parse_expression_inner(0);
 	}
@@ -308,6 +312,11 @@ Result<std::shared_ptr<AST::BlockExpression const>, Error> Parser::parse_block_e
 		}
 
 		last_expression = TRY(parse_expression());
+		if (last_expression->can_be_statement_without_semicolon()) {
+			statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
+			last_expression = nullptr;
+		}
+
 		if (m_current_token.type() == Token::Type::Semicolon) {
 			TRY(consume());
 			statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
@@ -333,6 +342,73 @@ Result<std::shared_ptr<AST::BlockExpression const>, Error> Parser::parse_block_e
 
 		return std::make_shared<AST::BlockExpression const>(std::move(statements), std::move(last_expression), span);
 	}
+}
+
+Result<std::shared_ptr<AST::IfExpression const>, Error> Parser::parse_if_expression() {
+	auto span = m_current_token.span();
+
+	TRY(consume(Token::Type::KW_if));
+
+	TRY(consume(Token::Type::LeftParenthesis));
+	auto condition = TRY(parse_expression());
+	TRY(consume(Token::Type::RightParenthesis));
+	span = Span::merge(span, condition->span());
+
+	auto then = TRY(parse_block_expression());
+	span = Span::merge(span, then->span());
+
+	if (m_current_token.type() == Token::Type::KW_else) {
+		TRY(consume());
+		if (m_current_token.type() == Token::Type::KW_if) {
+			auto else_if = TRY(parse_if_expression());
+			span = Span::merge(span, else_if->span());
+			return std::make_shared<AST::IfExpression const>(std::move(condition), std::move(then), std::move(else_if), span);
+		}
+
+		auto else_ = TRY(parse_block_expression());
+		span = Span::merge(span, else_->span());
+		return std::make_shared<AST::IfExpression const>(std::move(condition), std::move(then), std::move(else_), span);
+	}
+
+	return std::make_shared<AST::IfExpression const>(std::move(condition), std::move(then), nullptr, span);
+}
+
+Result<std::shared_ptr<AST::ForExpression const>, Error> Parser::parse_for_expression() {
+	auto span = m_current_token.span();
+
+	TRY(consume(Token::Type::KW_for));
+	if (m_current_token.type() == Token::Type::LeftParenthesis) {
+		TRY(consume());
+		auto condition = TRY(parse_expression());
+		span = Span::merge(span, condition->span());
+
+		if (m_current_token.type() == Token::Type::KW_in) {
+			TRY(consume());
+			if (!condition->is_identifier()) {
+				return Error { "Expected identifier in for-in loop!", condition->span() };
+			}
+
+			auto identifier = std::static_pointer_cast<AST::Identifier const>(condition);
+			// FIXME: Should define what a range expression is
+			auto range_expression = TRY(parse_expression());
+			span = Span::merge(span, range_expression->span());
+
+			TRY(consume(Token::Type::RightParenthesis));
+
+			auto body = TRY(parse_block_expression());
+			span = Span::merge(span, body->span());
+			return std::static_pointer_cast<AST::ForExpression const>(std::make_shared<AST::ForWithRangeExpression const>(std::move(identifier), std::move(range_expression), std::move(body), span));
+		}
+
+		TRY(consume(Token::Type::RightParenthesis));
+		auto body = TRY(parse_block_expression());
+		span = Span::merge(span, body->span());
+		return std::static_pointer_cast<AST::ForExpression const>(std::make_shared<AST::ForWithConditionExpression const>(std::move(condition), std::move(body), span));
+	}
+
+	auto body = TRY(parse_block_expression());
+	span = Span::merge(span, body->span());
+	return std::static_pointer_cast<AST::ForExpression const>(std::make_shared<AST::InfiniteForExpression const>(std::move(body), span));
 }
 
 Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {

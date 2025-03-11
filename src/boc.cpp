@@ -9,9 +9,10 @@ Result<void, bo::Error> my_main() {
 /* A function
    Takes two numbers and does operations */
 fn f(a: u32, b: u32): u32 {
-	var c: mut u32;
-	c = a = b << 2 + b * 2 - 3 / 2;
-	c
+	for { ++c; }
+	for (c < 2 * 3) { ++c; }
+	// FIXME: Not really a range expression
+	for (c in 0+10) { ++c; }
 }
 )"sv;
 
