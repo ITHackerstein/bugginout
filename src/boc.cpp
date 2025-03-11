@@ -13,6 +13,13 @@ fn f(a: u32, b: u32): u32 {
 	for (c < 2 * 3) { ++c; }
 	// FIXME: Not really a range expression
 	for (c in 0+10) { ++c; }
+	if (a + b == (c >> 1) & 1) {
+		--a;
+	} else if (a - b == (c << 1) & 1) {
+		++b;
+	} else {
+		++a;
+	}
 }
 )"sv;
 
