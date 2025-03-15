@@ -134,7 +134,7 @@ STATEMENTS:
 	STATEMENTS STATEMENTS_END
 
 STATEMENTS_END:
-	STATEMENT | EXPRESSION
+	STATEMENT | EXPRESSION_WITHOUT_BLOCK
 ```
 
 ### Call expressions
@@ -160,17 +160,6 @@ IF_EXPRESSION:
 	"if" "(" EXPRESSION ")" BLOCK_EXPRESSION ("else" (IF_EXPRESSION | BLOCK_EXPRESSION))?
 ```
 
-### For expressions
-
-> **FIXME**: Better define what the expression of the for loop has to be.
-
-```
-FOR_EXPRESSION:
-	"for" BLOCK_EXPRESSION |
-	"for" "(" EXPRESSION ")" BLOCK_EXPRESSION |
-	"for" "(" IDENTIFIER "in" EXPRESSION ")" BLOCK_EXPRESSION
-```
-
 ## Statements
 
 A statement evaluates an expression and discards its value. They are ended with `;`.
@@ -191,6 +180,15 @@ Variables are declared with the following syntax:
 var variable_name [: type] [= initial_value];
 ```
 If the type is not specified it will be infered from the initial value. Also, every variable is immutable by default.
+
+### For statements
+
+```
+FOR_STATEMENT:
+	"for" BLOCK_EXPRESSION |
+	"for" "(" EXPRESSION ")" BLOCK_EXPRESSION |
+	"for" "(" IDENTIFIER "in" EXPRESSION ")" BLOCK_EXPRESSION
+```
 
 ## Functions
 
