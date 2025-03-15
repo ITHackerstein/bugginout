@@ -19,7 +19,7 @@ void Type::dump() const {
 }
 
 void ExpressionStatement::dump() const {
-	fmt::print("{{\"node\":\"ExpressionStatement\",\"span\":[{},{}],\"expression\":", span().start, span().end);
+	fmt::print("{{\"node\":\"ExpressionStatement\",\"span\":[{},{}],\"ends_with_semicolon\":{},\"expression\":", span().start, span().end, m_ends_with_semicolon);
 	m_expression->dump();
 	fmt::print("}}");
 }
@@ -143,7 +143,6 @@ void BlockExpression::dump() const {
 		statement->dump();
 		fmt::print(",");
 	}
-	std::visit([](auto const& node) { node->dump(); }, m_last_expression_or_statement);
 	fmt::print("]}}");
 }
 

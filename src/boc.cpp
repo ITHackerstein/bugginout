@@ -9,12 +9,11 @@ Result<void, bo::Error> my_main() {
 /* A function
    Takes two numbers and does operations */
 fn f(a: u32, b: u32): u32 {
-	if (a > b) {
-		a
+	var a = if (a > b) {
+		(if (a == b) { 4 } else { 3 }) + a
 	} else {
 		b
-	}
-	a + b
+	} + 3;
 }
 )"sv;
 

@@ -44,15 +44,16 @@ public:
 	virtual void dump() const override;
 
 private:
-	std::shared_ptr<AST::Expression const> m_expression;
+	std::shared_ptr<Expression const> m_expression;
 };
 
 class Statement : public Node {
+public:
+	virtual bool is_expression_statement() const { return false; }
+
 protected:
 	explicit Statement(Span span)
 	  : Node(span) {}
-
-private:
 };
 
 class Type : public Node {
@@ -69,13 +70,15 @@ private:
 
 class ExpressionStatement : public Statement {
 public:
-	explicit ExpressionStatement(std::shared_ptr<Expression const> expression, Span span)
-	  : Statement(span), m_expression(std::move(expression)) {}
+	explicit ExpressionStatement(std::shared_ptr<Expression const> expression, bool ends_with_semicolon, Span span)
+	  : Statement(span), m_expression(std::move(expression)), m_ends_with_semicolon(ends_with_semicolon) {}
 
+	virtual bool is_expression_statement() const override { return true; }
 	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_expression;
+	bool m_ends_with_semicolon;
 };
 
 class IntegerLiteral : public Expression {
@@ -272,18 +275,14 @@ private:
 
 class BlockExpression : public Expression {
 public:
-	explicit BlockExpression(std::vector<std::shared_ptr<Statement const>> statements, std::shared_ptr<Expression const> expression, Span span)
-	  : Expression(span), m_statements(std::move(statements)), m_last_expression_or_statement(std::move(expression)) {}
-
-	explicit BlockExpression(std::vector<std::shared_ptr<Statement const>> statements, std::shared_ptr<Statement const> statement, Span span)
-	  : Expression(span), m_statements(std::move(statements)), m_last_expression_or_statement(std::move(statement)) {}
+	explicit BlockExpression(std::vector<std::shared_ptr<Statement const>> statements, Span span)
+	  : Expression(span), m_statements(std::move(statements)) {}
 
 	virtual void dump() const override;
 	virtual bool has_block() const override { return true; }
 
 private:
 	std::vector<std::shared_ptr<Statement const>> m_statements;
-	std::variant<std::shared_ptr<Expression const>, std::shared_ptr<Statement const>> m_last_expression_or_statement;
 };
 
 struct FunctionParameter {

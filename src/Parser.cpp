@@ -314,62 +314,36 @@ Result<std::shared_ptr<AST::Statement const>, Error> Parser::parse_statement() {
 		return std::static_pointer_cast<AST::Statement const>(TRY(parse_for_statement()));
 	default:
 		{
-			auto expression = TRY(parse_expression());
-			TRY(consume(Token::Type::Semicolon));
-			auto expression_statement = std::make_shared<AST::ExpressionStatement const>(std::move(expression), expression->span());
-			return std::static_pointer_cast<AST::Statement const>(std::move(expression_statement));
+			auto expression = TRY(parse_expression_with_restrictions(R_NoExpressionsWithBlocks));
+			if (m_current_token.type() == Token::Type::Semicolon) {
+				auto span = Span::merge(m_current_token.span(), expression->span());
+				TRY(consume());
+
+				return std::static_pointer_cast<AST::Statement const>(std::make_shared<AST::ExpressionStatement const>(std::move(expression), true, span));
+			}
+
+			if (expression->has_block() || m_current_token.type() == Token::Type::RightCurlyBracket) {
+				return std::static_pointer_cast<AST::Statement const>(std::make_shared<AST::ExpressionStatement const>(std::move(expression), false, expression->span()));
+			}
+
+			return Error { "Expected semicolon after expression", expression->span() };
 		}
 	}
 }
 
 Result<std::shared_ptr<AST::BlockExpression const>, Error> Parser::parse_block_expression() {
+	auto span = m_current_token.span();
 	TRY(consume(Token::Type::LeftCurlyBracket));
+
 	std::vector<std::shared_ptr<AST::Statement const>> statements;
-	std::shared_ptr<AST::Expression const> last_expression;
 	while (m_current_token.type() != Token::Type::RightCurlyBracket) {
-		if (m_current_token.type() == Token::Type::KW_var) {
-			statements.push_back(TRY(parse_variable_declaration_statement()));
-			continue;
-		}
-
-		if (m_current_token.type() == Token::Type::KW_for) {
-			statements.push_back(TRY(parse_for_statement()));
-			continue;
-		}
-
-		last_expression = TRY(parse_expression_with_restrictions(R_NoExpressionsWithBlocks));
-		if (last_expression->has_block()) {
-			statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
-			last_expression = nullptr;
-		}
-
-		if (m_current_token.type() == Token::Type::Semicolon) {
-			TRY(consume());
-			if (last_expression != nullptr) {
-				statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
-				last_expression = nullptr;
-			}
-		}
+		statements.push_back(TRY(parse_statement()));
 	}
+
+	span = Span::merge(span, m_current_token.span());
 	TRY(consume(Token::Type::RightCurlyBracket));
 
-	if (last_expression == nullptr) {
-		auto last_statement = std::move(statements.back());
-		statements.pop_back();
-
-		auto span = last_statement->span();
-		for (auto const& statement : statements) {
-			span = Span::merge(span, statement->span());
-		}
-		return std::make_shared<AST::BlockExpression const>(std::move(statements), std::move(last_statement), span);
-	} else {
-		auto span = last_expression->span();
-		for (auto const& statement : statements) {
-			span = Span::merge(span, statement->span());
-		}
-
-		return std::make_shared<AST::BlockExpression const>(std::move(statements), std::move(last_expression), span);
-	}
+	return std::make_shared<AST::BlockExpression const>(std::move(statements), span);
 }
 
 Result<std::shared_ptr<AST::IfExpression const>, Error> Parser::parse_if_expression() {
