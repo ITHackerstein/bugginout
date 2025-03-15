@@ -226,11 +226,13 @@ void FunctionCallExpression::dump() const {
 		}
 		fmt::print("\"value\":");
 		argument.value->dump();
+		fmt::print("}}");
 
 		if (i != m_arguments.size() - 1) {
 			fmt::print(",");
 		}
 	}
+	fmt::print("]}}");
 }
 
 void Program::dump() const {

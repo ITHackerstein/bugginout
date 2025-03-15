@@ -149,7 +149,20 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 
 	switch (m_current_token.type()) {
 	case Token::Type::Identifier:
-		return std::static_pointer_cast<AST::Expression const>(TRY(parse_identifier()));
+		{
+			auto span = m_current_token.span();
+			auto identifier = TRY(parse_identifier());
+
+			if (m_current_token.type() == Token::Type::LeftParenthesis) {
+				auto arguments = TRY(parse_function_arguments());
+				span = Span::merge(span, m_current_token.span());
+				auto call_expression = std::make_shared<AST::FunctionCallExpression const>(std::move(identifier), std::move(arguments), span);
+
+				return std::static_pointer_cast<AST::Expression const>(std::move(call_expression));
+			} else {
+				return std::static_pointer_cast<AST::Expression const>(std::move(identifier));
+			}
+		}
 	case Token::Type::DecimalLiteral:
 	case Token::Type::BinaryLiteral:
 	case Token::Type::OctalLiteral:
@@ -373,6 +386,34 @@ Result<std::shared_ptr<AST::IfExpression const>, Error> Parser::parse_if_express
 	}
 
 	return std::make_shared<AST::IfExpression const>(std::move(condition), std::move(then), nullptr, span);
+}
+
+Result<std::vector<AST::FunctionArgument>, Error> Parser::parse_function_arguments() {
+	// FIXME: Should check the arguments
+	TRY(consume(Token::Type::LeftParenthesis));
+	std::vector<AST::FunctionArgument> arguments;
+	while (m_current_token.type() != Token::Type::RightParenthesis) {
+		auto argument = TRY(parse_expression());
+		if (argument->is_identifier()) {
+			auto argument_name = std::static_pointer_cast<AST::Identifier const>(argument);
+
+			if (m_current_token.type() == Token::Type::Colon) {
+				arguments.emplace_back(argument_name, TRY(parse_expression()));
+			} else {
+				arguments.emplace_back(argument_name, argument_name);
+			}
+		} else {
+			arguments.emplace_back(nullptr, std::move(argument));
+		}
+
+		if (m_current_token.type() != Token::Type::Comma) {
+			break;
+		}
+		TRY(consume());
+	}
+	TRY(consume(Token::Type::RightParenthesis));
+
+	return arguments;
 }
 
 Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statement() {

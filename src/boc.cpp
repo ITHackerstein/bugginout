@@ -6,14 +6,12 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-/* A function
-   Takes two numbers and does operations */
 fn f(a: u32, b: u32): u32 {
-	var a = if (a > b) {
-		(if (a == b) { 4 } else { 3 }) + a
-	} else {
-		b
-	} + 3;
+	a + b
+}
+
+fn g(a: u32, b: u32, c: u32): u32 {
+	f(f(f(a, b), c), 0x12)
 }
 )"sv;
 
