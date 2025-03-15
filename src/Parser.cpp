@@ -26,7 +26,7 @@ Result<std::shared_ptr<AST::Program const>, Error> Parser::parse_program() {
 
 	Span span { 0, 0 };
 	while (m_current_token.type() != Token::Type::EndOfFile) {
-		auto function_declaration = TRY(parse_function_declaration());
+		auto function_declaration = TRY(parse_function_declaration_statement());
 		span = Span::merge(span, function_declaration->span());
 		functions.push_back(std::move(function_declaration));
 	}
@@ -155,12 +155,19 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_integer_literal()));
 	case Token::Type::LeftParenthesis:
 		{
-			// FIXME: Should add the parenthesis to the span
+			auto span = m_current_token.span();
 			TRY(consume());
 			auto expression = TRY(parse_expression());
+			span = Span::merge(span, expression->span());
+			span = Span::merge(span, m_current_token.span());
 			TRY(consume(Token::Type::RightParenthesis));
-			return expression;
+
+			return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::ParenthesizedExpression const>(std::move(expression), span));
 		}
+	case Token::Type::LeftCurlyBracket:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_block_expression()));
+	case Token::Type::KW_if:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_if_expression()));
 	default:
 		assert(false);
 	}
@@ -256,6 +263,10 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_secondary_ex
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_inner(unsigned minimum_precedence) {
 	auto result = TRY(parse_primary_expression());
 
+	if (m_restrictions & R_NoExpressionsWithBlocks && result->has_block() && match_secondary_expression()) {
+		return Error { "Expression needs parenthesis!", result->span() };
+	}
+
 	while (match_secondary_expression()) {
 		auto operator_token = m_current_token;
 		auto operator_precedence = OperatorData::precedence_of(operator_token.type());
@@ -275,22 +286,19 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_i
 }
 
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression() {
-	switch (m_current_token.type()) {
-	case Token::Type::LeftCurlyBracket:
-		return std::static_pointer_cast<AST::Expression const>(TRY(parse_block_expression()));
-	case Token::Type::KW_if:
-		return std::static_pointer_cast<AST::Expression const>(TRY(parse_if_expression()));
-	case Token::Type::KW_for:
-		return std::static_pointer_cast<AST::Expression const>(TRY(parse_for_expression()));
-	default:
-		return parse_expression_inner(0);
-	}
+	return parse_expression_with_restrictions(R_None);
+}
+
+Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_with_restrictions(int restrictions) {
+	return restrict([this]() { return parse_expression_inner(0); }, restrictions);
 }
 
 Result<std::shared_ptr<AST::Statement const>, Error> Parser::parse_statement() {
 	switch (m_current_token.type()) {
 	case Token::Type::KW_var:
-		return std::static_pointer_cast<AST::Statement const>(TRY(parse_variable_declaration()));
+		return std::static_pointer_cast<AST::Statement const>(TRY(parse_variable_declaration_statement()));
+	case Token::Type::KW_for:
+		return std::static_pointer_cast<AST::Statement const>(TRY(parse_for_statement()));
 	default:
 		{
 			auto expression = TRY(parse_expression());
@@ -307,20 +315,27 @@ Result<std::shared_ptr<AST::BlockExpression const>, Error> Parser::parse_block_e
 	std::shared_ptr<AST::Expression const> last_expression;
 	while (m_current_token.type() != Token::Type::RightCurlyBracket) {
 		if (m_current_token.type() == Token::Type::KW_var) {
-			statements.push_back(TRY(parse_variable_declaration()));
+			statements.push_back(TRY(parse_variable_declaration_statement()));
 			continue;
 		}
 
-		last_expression = TRY(parse_expression());
-		if (last_expression->can_be_statement_without_semicolon()) {
+		if (m_current_token.type() == Token::Type::KW_for) {
+			statements.push_back(TRY(parse_for_statement()));
+			continue;
+		}
+
+		last_expression = TRY(parse_expression_with_restrictions(R_NoExpressionsWithBlocks));
+		if (last_expression->has_block()) {
 			statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
 			last_expression = nullptr;
 		}
 
 		if (m_current_token.type() == Token::Type::Semicolon) {
 			TRY(consume());
-			statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
-			last_expression = nullptr;
+			if (last_expression != nullptr) {
+				statements.push_back(std::make_shared<AST::ExpressionStatement const>(std::move(last_expression), last_expression->span()));
+				last_expression = nullptr;
+			}
 		}
 	}
 	TRY(consume(Token::Type::RightCurlyBracket));
@@ -373,7 +388,7 @@ Result<std::shared_ptr<AST::IfExpression const>, Error> Parser::parse_if_express
 	return std::make_shared<AST::IfExpression const>(std::move(condition), std::move(then), nullptr, span);
 }
 
-Result<std::shared_ptr<AST::ForExpression const>, Error> Parser::parse_for_expression() {
+Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statement() {
 	auto span = m_current_token.span();
 
 	TRY(consume(Token::Type::KW_for));
@@ -397,18 +412,18 @@ Result<std::shared_ptr<AST::ForExpression const>, Error> Parser::parse_for_expre
 
 			auto body = TRY(parse_block_expression());
 			span = Span::merge(span, body->span());
-			return std::static_pointer_cast<AST::ForExpression const>(std::make_shared<AST::ForWithRangeExpression const>(std::move(identifier), std::move(range_expression), std::move(body), span));
+			return std::static_pointer_cast<AST::ForStatement const>(std::make_shared<AST::ForWithRangeStatement const>(std::move(identifier), std::move(range_expression), std::move(body), span));
 		}
 
 		TRY(consume(Token::Type::RightParenthesis));
 		auto body = TRY(parse_block_expression());
 		span = Span::merge(span, body->span());
-		return std::static_pointer_cast<AST::ForExpression const>(std::make_shared<AST::ForWithConditionExpression const>(std::move(condition), std::move(body), span));
+		return std::static_pointer_cast<AST::ForStatement const>(std::make_shared<AST::ForWithConditionStatement const>(std::move(condition), std::move(body), span));
 	}
 
 	auto body = TRY(parse_block_expression());
 	span = Span::merge(span, body->span());
-	return std::static_pointer_cast<AST::ForExpression const>(std::make_shared<AST::InfiniteForExpression const>(std::move(body), span));
+	return std::static_pointer_cast<AST::ForStatement const>(std::make_shared<AST::InfiniteForStatement const>(std::move(body), span));
 }
 
 Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
@@ -496,7 +511,7 @@ Result<std::vector<AST::FunctionParameter>, Error> Parser::parse_function_parame
 	return parameters;
 }
 
-Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::parse_function_declaration() {
+Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::parse_function_declaration_statement() {
 	auto span = m_current_token.span();
 
 	TRY(consume(Token::Type::KW_fn));
@@ -511,7 +526,7 @@ Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::
 	return std::make_shared<AST::FunctionDeclarationStatement const>(function_name, function_parameters, function_return_type, function_body, span);
 }
 
-Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::parse_variable_declaration() {
+Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::parse_variable_declaration_statement() {
 	auto span = m_current_token.span();
 	TRY(consume(Token::Type::KW_var));
 	auto identifier = TRY(parse_identifier());
