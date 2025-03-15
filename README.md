@@ -119,6 +119,7 @@ The following operators can be used in expressions (listed in order of precedenc
 | `a \| b`                                                                                                                            | Left          | Bitwise OR                          |
 | `a && b`                                                                                                                            | Left          | Logical AND                         |
 | `a \|\| b`                                                                                                                          | Left          | Logical OR                          |
+| `a ..< b`,`a ..= b`                                                                                                                 | Right         | Range expression                    |
 | `a = b`,`a += b`,`a -= b`,`a *= b`,`a /= b`,`a %= b`,`a <<= b`,`a >>= b`,`a &= b`,`a ^= b`,`a \|= b`,`a &&= b`,`a \|\|= b`          | Right         | Assignment/update                   |
 
 The order of evaluation of an expression can be changed using parenthesis `()`.
@@ -158,6 +159,13 @@ NAMED_CALL_PARAMETER: IDENTIFIER ":" EXPRESSION
 ```
 IF_EXPRESSION:
 	"if" "(" EXPRESSION ")" BLOCK_EXPRESSION ("else" (IF_EXPRESSION | BLOCK_EXPRESSION))?
+```
+
+### Range expressions
+
+```
+RANGE_EXPRESSION:
+	EXPRESSION ("..<" | "..=") EXPRESSION
 ```
 
 ## Statements
