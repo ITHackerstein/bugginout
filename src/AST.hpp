@@ -244,6 +244,19 @@ private:
 	std::shared_ptr<Expression const> m_operand;
 };
 
+class RangeExpression : public Expression {
+public:
+	explicit RangeExpression(std::shared_ptr<Expression const> start, std::shared_ptr<Expression const> end, bool is_inclusive, Span span)
+	  : Expression(span), m_start(std::move(start)), m_end(std::move(end)), m_is_inclusive(is_inclusive) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_start;
+	std::shared_ptr<Expression const> m_end;
+	bool m_is_inclusive;
+};
+
 class VariableDeclarationStatement : public Statement {
 public:
 	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> expression, Span span)

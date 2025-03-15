@@ -67,6 +67,8 @@ bool Parser::match_secondary_expression() const {
 	  || type == Token::Type::AmpersandEquals
 	  || type == Token::Type::CircumflexEquals
 	  || type == Token::Type::PipeEquals
+	  || type == Token::Type::DotDotEquals
+	  || type == Token::Type::DotDotLessThan
 	  || type == Token::Type::DoubleAmpersandEquals
 	  || type == Token::Type::DoublePipeEquals;
 }
@@ -188,6 +190,13 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_secondary_ex
 		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::AssignmentExpression const>(std::move(lhs), std::move(rhs), AST::AssignmentOperator::operator_, span)); \
 	}
 
+#define MAKE_RANGE_EXPRESSION(is_inclusive)                                                                                                                     \
+	{                                                                                                                                                             \
+		auto rhs = TRY(parse_expression_inner(minimum_precedence));                                                                                                 \
+		auto span = Span::merge(lhs->span(), rhs->span());                                                                                                          \
+		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::RangeExpression const>(std::move(lhs), std::move(rhs), (is_inclusive), span)); \
+	}
+
 	switch (operator_token.type()) {
 	case Token::Type::PlusPlus:
 		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::UpdateExpression const>(std::move(lhs), AST::UpdateOperator::Increment, false, Span::merge(lhs->span(), operator_token.span())));
@@ -225,6 +234,10 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_secondary_ex
 		MAKE_BINARY_EXPRESSION(BitwiseXor);
 	case Token::Type::Pipe:
 		MAKE_BINARY_EXPRESSION(BitwiseOr);
+	case Token::Type::DotDotEquals:
+		MAKE_RANGE_EXPRESSION(true);
+	case Token::Type::DotDotLessThan:
+		MAKE_RANGE_EXPRESSION(false);
 	case Token::Type::DoubleAmpersand:
 		MAKE_BINARY_EXPRESSION(LogicalAnd);
 	case Token::Type::DoublePipe:
@@ -404,7 +417,6 @@ Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statem
 			}
 
 			auto identifier = std::static_pointer_cast<AST::Identifier const>(condition);
-			// FIXME: Should define what a range expression is
 			auto range_expression = TRY(parse_expression());
 			span = Span::merge(span, range_expression->span());
 

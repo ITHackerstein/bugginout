@@ -111,6 +111,16 @@ void AddressOfExpression::dump() const {
 	fmt::print("}}");
 }
 
+void RangeExpression::dump() const {
+	fmt::print("{{\"node\":\"RangeExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"start\":");
+	m_start->dump();
+	fmt::print(",\"end\":");
+	m_end->dump();
+	fmt::print(",\"is_inclusive\":{}", m_is_inclusive);
+	fmt::print("}}");
+}
+
 void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"identifier\":");
@@ -196,6 +206,8 @@ void ForWithRangeStatement::dump() const {
 	m_range_variable->dump();
 	fmt::print(",\"range_expression\":");
 	m_range_expression->dump();
+	fmt::print(",\"body\":");
+	m_body->dump();
 	fmt::print("}}");
 }
 

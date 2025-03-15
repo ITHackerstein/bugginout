@@ -30,6 +30,12 @@ consteval std::array<unsigned, Token::count()> generate_precedence_table() {
 	}
 
 	{
+		table[static_cast<std::size_t>(Token::Type::DotDotEquals)] = p;
+		table[static_cast<std::size_t>(Token::Type::DotDotLessThan)] = p;
+		++p;
+	}
+
+	{
 		table[static_cast<std::size_t>(Token::Type::DoublePipe)] = p;
 		++p;
 	}

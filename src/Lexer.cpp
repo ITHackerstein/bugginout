@@ -1,12 +1,9 @@
 #include "Lexer.hpp"
 
-#include <array>
 #include <cctype>
 #include <cstdlib>
 
 namespace bo {
-
-constexpr std::array SUFFIXES = { "u8"sv, "i8"sv, "u16"sv, "i16"sv, "u32"sv, "i32"sv, "u64"sv, "i64"sv, "usize"sv, "isize"sv };
 
 Lexer::Lexer(std::string_view source)
   : m_source(source), m_current_character(-1), m_current_position(0) {
@@ -337,6 +334,20 @@ Result<Token::Type, Error> Lexer::lex_operator() {
 			return Token::Type::DoublePipe;
 		}
 		return Token::Type::Pipe;
+	}
+
+	if (m_current_character == '.' && m_current_position < m_source.size() && m_source[m_current_position] == '.') {
+		if (m_current_position + 1 < m_source.size() && m_source[m_current_position + 1] == '<') {
+			advance();
+			advance();
+			advance();
+			return Token::Type::DotDotLessThan;
+		} else if (m_current_position + 1 < m_source.size() && m_source[m_current_position + 1] == '=') {
+			advance();
+			advance();
+			advance();
+			return Token::Type::DotDotEquals;
+		}
 	}
 
 	return Error { "unexpected character while lexing", Span { m_current_position - 1, m_current_position - 1 } };

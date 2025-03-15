@@ -1,7 +1,5 @@
 #pragma once
 
-#include <functional>
-
 #include "AST.hpp"
 #include "Lexer.hpp"
 

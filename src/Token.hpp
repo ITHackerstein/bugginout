@@ -45,6 +45,8 @@ using namespace std::literals;
 	BO_ENUMERATE_TOKEN(Colon)                 \
 	BO_ENUMERATE_TOKEN(Comma)                 \
 	BO_ENUMERATE_TOKEN(DecimalLiteral)        \
+	BO_ENUMERATE_TOKEN(DotDotEquals)          \
+	BO_ENUMERATE_TOKEN(DotDotLessThan)        \
 	BO_ENUMERATE_TOKEN(DoubleAmpersand)       \
 	BO_ENUMERATE_TOKEN(DoubleAmpersandEquals) \
 	BO_ENUMERATE_TOKEN(DoubleEquals)          \
