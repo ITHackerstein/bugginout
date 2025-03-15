@@ -28,17 +28,27 @@ private:
 
 class Expression : public Node {
 public:
+	virtual bool is_identifier() const { return false; }
+	virtual bool has_block() const { return false; }
+
+protected:
 	explicit Expression(Span span)
 	  : Node(span) {}
+};
 
-	virtual bool is_identifier() const { return false; }
-	virtual bool can_be_statement_without_semicolon() const { return false; }
+class ParenthesizedExpression : public Expression {
+public:
+	explicit ParenthesizedExpression(std::shared_ptr<Expression const> expression, Span span)
+	  : Expression(span), m_expression(std::move(expression)) {}
+
+	virtual void dump() const override;
 
 private:
+	std::shared_ptr<AST::Expression const> m_expression;
 };
 
 class Statement : public Node {
-public:
+protected:
 	explicit Statement(Span span)
 	  : Node(span) {}
 
@@ -256,7 +266,7 @@ public:
 	  : Expression(span), m_statements(std::move(statements)), m_last_expression_or_statement(std::move(statement)) {}
 
 	virtual void dump() const override;
-	virtual bool can_be_statement_without_semicolon() const override { return true; }
+	virtual bool has_block() const override { return true; }
 
 private:
 	std::vector<std::shared_ptr<Statement const>> m_statements;
@@ -289,7 +299,7 @@ public:
 	  : Expression(span), m_condition(std::move(condition)), m_then(std::move(then)), m_else(std::move(else_)) {}
 
 	virtual void dump() const override;
-	virtual bool can_be_statement_without_semicolon() const override { return true; }
+	virtual bool has_block() const override { return true; }
 
 private:
 	std::shared_ptr<Expression const> m_condition;
@@ -297,29 +307,26 @@ private:
 	std::shared_ptr<Expression const> m_else;
 };
 
-class ForExpression : public Expression {
-public:
-	virtual bool can_be_statement_without_semicolon() const override { return true; }
-
+class ForStatement : public Statement {
 protected:
-	explicit ForExpression(std::shared_ptr<BlockExpression const> body, Span span)
-	  : Expression(span), m_body(std::move(body)) {}
+	explicit ForStatement(std::shared_ptr<BlockExpression const> body, Span span)
+	  : Statement(span), m_body(std::move(body)) {}
 
 	std::shared_ptr<BlockExpression const> m_body;
 };
 
-class InfiniteForExpression : public ForExpression {
+class InfiniteForStatement : public ForStatement {
 public:
-	explicit InfiniteForExpression(std::shared_ptr<BlockExpression const> body, Span span)
-	  : ForExpression(body, span) {}
+	explicit InfiniteForStatement(std::shared_ptr<BlockExpression const> body, Span span)
+	  : ForStatement(body, span) {}
 
 	virtual void dump() const override;
 };
 
-class ForWithConditionExpression : public ForExpression {
+class ForWithConditionStatement : public ForStatement {
 public:
-	explicit ForWithConditionExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> body, Span span)
-	  : ForExpression(body, span), m_condition(condition) {}
+	explicit ForWithConditionStatement(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> body, Span span)
+	  : ForStatement(body, span), m_condition(condition) {}
 
 	virtual void dump() const override;
 
@@ -327,10 +334,10 @@ private:
 	std::shared_ptr<Expression const> m_condition;
 };
 
-class ForWithRangeExpression : public ForExpression {
+class ForWithRangeStatement : public ForStatement {
 public:
-	explicit ForWithRangeExpression(std::shared_ptr<Identifier const> range_variable, std::shared_ptr<Expression const> range_expression, std::shared_ptr<BlockExpression const> body, Span span)
-	  : ForExpression(body, span), m_range_variable(std::move(range_variable)), m_range_expression(std::move(range_expression)) {}
+	explicit ForWithRangeStatement(std::shared_ptr<Identifier const> range_variable, std::shared_ptr<Expression const> range_expression, std::shared_ptr<BlockExpression const> body, Span span)
+	  : ForStatement(body, span), m_range_variable(std::move(range_variable)), m_range_expression(std::move(range_expression)) {}
 
 	virtual void dump() const override;
 

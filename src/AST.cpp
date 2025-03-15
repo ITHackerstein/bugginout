@@ -7,6 +7,13 @@ namespace bo {
 
 namespace AST {
 
+void ParenthesizedExpression::dump() const {
+	fmt::print("{{\"node\":\"ParenthesizedExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"expression\":");
+	m_expression->dump();
+	fmt::print("}}");
+}
+
 void Type::dump() const {
 	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}],\"type\":{:?},\"is_mutable\":{}}}", span().start, span().end, m_type, m_is_mutable);
 }
@@ -28,8 +35,8 @@ void Identifier::dump() const {
 void BinaryExpression::dump() const {
 	fmt::print("{{\"node\":\"BinaryExpression\",\"span\":[{},{}],", span().start, span().end);
 	switch (m_op) {
-#define BO_ENUMERATE_BINARY_OPERATOR(x)     \
-	case BinaryOperator::x:                   \
+#define BO_ENUMERATE_BINARY_OPERATOR(x)    \
+	case BinaryOperator::x:                  \
 		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_BINARY_OPERATORS
@@ -45,8 +52,8 @@ void BinaryExpression::dump() const {
 void UnaryExpression::dump() const {
 	fmt::print("{{\"node\":\"UnaryExpression\",\"span\":[{},{}],", span().start, span().end);
 	switch (m_op) {
-#define BO_ENUMERATE_UNARY_OPERATOR(x)      \
-	case UnaryOperator::x:                    \
+#define BO_ENUMERATE_UNARY_OPERATOR(x)     \
+	case UnaryOperator::x:                   \
 		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_UNARY_OPERATORS
@@ -62,7 +69,7 @@ void AssignmentExpression::dump() const {
 	switch (m_op) {
 #define BO_ENUMERATE_ASSIGNMENT_OPERATOR(x) \
 	case AssignmentOperator::x:               \
-		fmt::print("\"operator\":\"{}\"", #x); \
+		fmt::print("\"operator\":\"{}\"", #x);  \
 		break;
 		_BO_ENUMERATE_ASSIGNMENT_OPERATORS
 #undef BO_ENUMERATE_ASSIGNMENT_OPERATOR
@@ -77,8 +84,8 @@ void AssignmentExpression::dump() const {
 void UpdateExpression::dump() const {
 	fmt::print("{{\"node\":\"UpdateExpression\",\"span\":[{},{}],", span().start, span().end);
 	switch (m_op) {
-#define BO_ENUMERATE_UPDATE_OPERATOR(x)     \
-	case UpdateOperator::x:                   \
+#define BO_ENUMERATE_UPDATE_OPERATOR(x)    \
+	case UpdateOperator::x:                  \
 		fmt::print("\"operator\":\"{}\"", #x); \
 		break;
 		_BO_ENUMERATE_UPDATE_OPERATORS
@@ -167,15 +174,15 @@ void IfExpression::dump() const {
 	fmt::print("}}");
 }
 
-void InfiniteForExpression::dump() const {
-	fmt::print("{{\"node\":\"InfiniteForExpression\",\"span\":[{},{}],", span().start, span().end);
+void InfiniteForStatement::dump() const {
+	fmt::print("{{\"node\":\"InfiniteForStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"body\":");
 	m_body->dump();
 	fmt::print("}}");
 }
 
-void ForWithConditionExpression::dump() const {
-	fmt::print("{{\"node\":\"ForWithConditionExpression\",\"span\":[{},{}],", span().start, span().end);
+void ForWithConditionStatement::dump() const {
+	fmt::print("{{\"node\":\"ForWithConditionStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"condition\":");
 	m_condition->dump();
 	fmt::print(",\"body\":");
@@ -183,8 +190,8 @@ void ForWithConditionExpression::dump() const {
 	fmt::print("}}");
 }
 
-void ForWithRangeExpression::dump() const {
-	fmt::print("{{\"node\":\"ForWithRangeExpression\",\"span\":[{},{}],", span().start, span().end);
+void ForWithRangeStatement::dump() const {
+	fmt::print("{{\"node\":\"ForWithRangeStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"range_variable\":");
 	m_range_variable->dump();
 	fmt::print(",\"range_expression\":");
