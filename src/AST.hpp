@@ -389,6 +389,17 @@ private:
 	std::shared_ptr<Expression const> m_range_expression;
 };
 
+class ReturnStatement : public Statement {
+public:
+	explicit ReturnStatement(std::shared_ptr<Expression const> expression, Span span)
+	  : Statement(span), m_expression(std::move(expression)) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_expression;
+};
+
 class Program : public Node {
 public:
 	explicit Program(std::vector<std::shared_ptr<FunctionDeclarationStatement const>> functions, Span span)

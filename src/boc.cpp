@@ -6,12 +6,16 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn f(a: u32, b: u32): u32 {
-	a + b
-}
+fn find(haystack: mut ^char, needle: char): isize {
+	for (@haystack != 0) {
+		if (@haystack == needle) {
+			return i;
+		}
 
-fn g(a: u32, b: u32, c: u32): u32 {
-	f(f(f(a, b), c), 0x12)
+		++haystack;
+	}
+
+	-1
 }
 )"sv;
 

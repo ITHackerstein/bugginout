@@ -23,6 +23,7 @@ using namespace std::literals;
 	BO_ENUMERATE_KEYWORD(isize)  \
 	BO_ENUMERATE_KEYWORD(mut)    \
 	BO_ENUMERATE_KEYWORD(null)   \
+	BO_ENUMERATE_KEYWORD(return) \
 	BO_ENUMERATE_KEYWORD(true)   \
 	BO_ENUMERATE_KEYWORD(u16)    \
 	BO_ENUMERATE_KEYWORD(u32)    \

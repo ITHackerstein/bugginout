@@ -16,13 +16,7 @@ private:
 	  : m_lexer(std::move(lexer)), m_current_token(std::move(current_token)) {}
 
 	template<typename Fn>
-	auto restrict(Fn fn, int restrictions) {
-		auto previous_restrictions = m_restrictions;
-		m_restrictions = restrictions;
-		auto result = fn();
-		m_restrictions = previous_restrictions;
-		return std::move(result);
-	}
+	auto restrict(Fn fn, int restrictions);
 
 	bool match_unary_expression() const;
 	bool match_secondary_expression() const;
@@ -46,6 +40,7 @@ private:
 	Result<std::shared_ptr<AST::ForStatement const>, Error> parse_for_statement();
 	Result<std::vector<AST::FunctionParameter>, Error> parse_function_parameters();
 	Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> parse_function_declaration_statement();
+	Result<std::shared_ptr<AST::ReturnStatement const>, Error> parse_return_statement();
 
 	Result<void, Error> consume(std::optional<Token::Type> = {});
 

@@ -93,6 +93,33 @@ consteval std::array<unsigned, Token::count()> generate_precedence_table() {
 		++p;
 	}
 
+	// NOTE: Skipping one value for unary &
+	++p;
+
+	{
+		table[static_cast<std::size_t>(Token::Type::At)] = p;
+		++p;
+	}
+
+	{
+		table[static_cast<std::size_t>(Token::Type::Tilde)] = p;
+		++p;
+	}
+
+	{
+		table[static_cast<std::size_t>(Token::Type::ExclamationMark)] = p;
+		++p;
+	}
+
+	// NOTE: Skipping one value for unary +, -
+	++p;
+
+	{
+		table[static_cast<std::size_t>(Token::Type::PlusPlus)] = p;
+		table[static_cast<std::size_t>(Token::Type::MinusMinus)] = p;
+		++p;
+	}
+
 	return table;
 }
 
@@ -109,6 +136,19 @@ public:
 		auto precedence = s_precedence_table[static_cast<std::size_t>(type)];
 		assert(precedence != 0 && "Invalid operator!");
 		return precedence;
+	}
+
+	static constexpr unsigned unary_precedence_of(Token::Type type) {
+		// FIXME: Should probably look for a better way of storing those values.
+		switch (type) {
+		case Token::Type::Ampersand:
+			return 13;
+		case Token::Type::Plus:
+		case Token::Type::Minus:
+			return 17;
+		default:
+			return precedence_of(type);
+		}
 	}
 
 	static constexpr Associativity associativity_of(Token::Type type) {

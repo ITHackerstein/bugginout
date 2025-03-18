@@ -3,6 +3,7 @@
 #include "OperatorData.hpp"
 
 #include <fmt/core.h>
+#include <memory>
 
 namespace bo {
 
@@ -10,6 +11,15 @@ Result<Parser, Error> Parser::create(std::string_view source) {
 	Lexer lexer { source };
 	auto current_token = TRY(lexer.next_token());
 	return Parser { std::move(lexer), std::move(current_token) };
+}
+
+template<typename Fn>
+auto Parser::restrict(Fn fn, int restrictions) {
+	auto previous_restrictions = m_restrictions;
+	m_restrictions = restrictions;
+	auto result = fn();
+	m_restrictions = previous_restrictions;
+	return std::move(result);
 }
 
 Result<void, Error> Parser::consume(std::optional<Token::Type> token_type) {
@@ -87,9 +97,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_unary_expres
 	{                                                                                                                                                                        \
 		auto span = m_current_token.span();                                                                                                                                    \
 		TRY(consume());                                                                                                                                                        \
-                                                                                                                                                                           \
-		auto operand                                                                                                                                                           \
-		  = TRY(parse_primary_expression());                                                                                                                                   \
+		auto operand = TRY(parse_primary_expression());                                                                                                                        \
 		span = Span::merge(span, operand->span());                                                                                                                             \
 		return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::UpdateExpression const>(std::move(operand), AST::UpdateOperator::operator_, true, span)); \
 	}
@@ -110,6 +118,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_unary_expres
 	case Token::Type::At:
 		{
 			auto span = m_current_token.span();
+			TRY(consume());
 			auto operand = TRY(parse_primary_expression());
 			span = Span::merge(span, operand->span());
 			return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::PointerDereferenceExpression const>(std::move(operand), span));
@@ -117,6 +126,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_unary_expres
 	case Token::Type::Ampersand:
 		{
 			auto span = m_current_token.span();
+			TRY(consume());
 			auto operand = TRY(parse_primary_expression());
 			span = Span::merge(span, operand->span());
 			return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::AddressOfExpression const>(std::move(operand), span));
@@ -289,8 +299,14 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_secondary_ex
 Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_inner(unsigned minimum_precedence) {
 	auto result = TRY(parse_primary_expression());
 
-	if (m_restrictions & R_NoExpressionsWithBlocks && result->has_block() && match_secondary_expression()) {
-		return Error { "Expression needs parenthesis!", result->span() };
+	if (m_restrictions & R_NoExpressionsWithBlocks && result->has_block()) {
+		if (match_unary_expression()) {
+			return result;
+		}
+
+		if (match_secondary_expression()) {
+			return Error { "Expression needs parenthesis!", result->span() };
+		}
 	}
 
 	while (match_secondary_expression()) {
@@ -325,6 +341,8 @@ Result<std::shared_ptr<AST::Statement const>, Error> Parser::parse_statement() {
 		return std::static_pointer_cast<AST::Statement const>(TRY(parse_variable_declaration_statement()));
 	case Token::Type::KW_for:
 		return std::static_pointer_cast<AST::Statement const>(TRY(parse_for_statement()));
+	case Token::Type::KW_return:
+		return std::static_pointer_cast<AST::Statement const>(TRY(parse_return_statement()));
 	default:
 		{
 			auto expression = TRY(parse_expression_with_restrictions(R_NoExpressionsWithBlocks));
@@ -501,6 +519,7 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 	case Token::Type::Identifier:
 		{
 			TRY(consume());
+			break;
 		}
 	default:
 		return Error { fmt::format("Expected type, got {:?}!", m_current_token.value()), m_current_token.span() };
@@ -602,6 +621,25 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 	TRY(consume(Token::Type::Semicolon));
 	span = Span::merge(span, m_current_token.span());
 	return std::make_shared<AST::VariableDeclarationStatement const>(std::move(identifier), std::move(type), std::move(expression), span);
+}
+
+Result<std::shared_ptr<AST::ReturnStatement const>, Error> Parser::parse_return_statement() {
+	auto span = m_current_token.span();
+	TRY(consume(Token::Type::KW_return));
+
+	if (m_current_token.type() == Token::Type::Semicolon) {
+		span = Span::merge(span, m_current_token.span());
+		TRY(consume());
+		return std::make_shared<AST::ReturnStatement const>(nullptr, span);
+	}
+
+	auto expression = TRY(parse_expression());
+	span = Span::merge(span, expression->span());
+
+	span = Span::merge(span, m_current_token.span());
+	TRY(consume(Token::Type::Semicolon));
+
+	return std::make_shared<AST::ReturnStatement const>(std::move(expression), span);
 }
 
 }
