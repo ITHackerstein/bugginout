@@ -121,9 +121,11 @@ void RangeExpression::dump() const {
 
 void BlockExpression::dump() const {
 	fmt::print("{{\"node\":\"BlockExpression\",\"span\":[{},{}],\"statements\":[", span().start, span().end);
-	for (auto const& statement : m_statements) {
-		statement->dump();
-		fmt::print(",");
+	for (std::size_t i = 0; i < m_statements.size(); ++i) {
+		m_statements[i]->dump();
+		if (i != m_statements.size() - 1) {
+			fmt::print(",");
+		}
 	}
 	fmt::print("]}}");
 }
@@ -139,6 +141,31 @@ void IfExpression::dump() const {
 		m_else->dump();
 	}
 	fmt::print("}}");
+}
+
+void FunctionCallExpression::dump() const {
+	fmt::print("{{\"node\":\"FunctionCallExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"name\":");
+	m_name->dump();
+	fmt::print(",\"arguments\":[");
+	for (std::size_t i = 0; i < m_arguments.size(); ++i) {
+		auto const& argument = m_arguments[i];
+
+		fmt::print("{{");
+		if (argument.name) {
+			fmt::print("\"name\":");
+			argument.name->dump();
+			fmt::print(",");
+		}
+		fmt::print("\"value\":");
+		argument.value->dump();
+		fmt::print("}}");
+
+		if (i != m_arguments.size() - 1) {
+			fmt::print(",");
+		}
+	}
+	fmt::print("]}}");
 }
 
 void ExpressionStatement::dump() const {
@@ -214,29 +241,13 @@ void ForWithRangeStatement::dump() const {
 	fmt::print("}}");
 }
 
-void FunctionCallExpression::dump() const {
-	fmt::print("{{\"node\":\"FunctionCallExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print("\"name\":");
-	m_name->dump();
-	fmt::print(",\"arguments\":[");
-	for (std::size_t i = 0; i < m_arguments.size(); ++i) {
-		auto const& argument = m_arguments[i];
-
-		fmt::print("{{");
-		if (argument.name) {
-			fmt::print("\"name\":");
-			argument.name->dump();
-			fmt::print(",");
-		}
-		fmt::print("\"value\":");
-		argument.value->dump();
-		fmt::print("}}");
-
-		if (i != m_arguments.size() - 1) {
-			fmt::print(",");
-		}
+void ReturnStatement::dump() const {
+	fmt::print("{{\"node\":\"ReturnStatement\",\"span\":[{},{}],", span().start, span().end);
+	if (m_expression) {
+		fmt::print("\"expression\":");
+		m_expression->dump();
 	}
-	fmt::print("]}}");
+	fmt::print("}}");
 }
 
 void Program::dump() const {

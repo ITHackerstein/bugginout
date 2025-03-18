@@ -53,7 +53,7 @@ enum TypeFlags : int {
 
 class Type : public Node {
 public:
-	explicit Type(std::string_view type, TypeFlags flags, Span span)
+	explicit Type(std::string_view type, int flags, Span span)
 	  : Node(span), m_type(type), m_flags(flags) {}
 
 	virtual void dump() const override;
