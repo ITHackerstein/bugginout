@@ -3,7 +3,6 @@
 #include "Span.hpp"
 
 #include <memory>
-#include <variant>
 #include <vector>
 
 namespace bo {
@@ -36,17 +35,6 @@ protected:
 	  : Node(span) {}
 };
 
-class ParenthesizedExpression : public Expression {
-public:
-	explicit ParenthesizedExpression(std::shared_ptr<Expression const> expression, Span span)
-	  : Expression(span), m_expression(std::move(expression)) {}
-
-	virtual void dump() const override;
-
-private:
-	std::shared_ptr<Expression const> m_expression;
-};
-
 class Statement : public Node {
 public:
 	virtual bool is_expression_statement() const { return false; }
@@ -56,29 +44,42 @@ protected:
 	  : Node(span) {}
 };
 
+enum TypeFlags : int {
+	PF_IsMutable = 1 << 0,
+	PF_IsWeakPointer = 1 << 1,
+	PF_IsStrongPointer = 1 << 2,
+	PF_IsReferencedTypeMutable = 1 << 3
+};
+
 class Type : public Node {
 public:
-	explicit Type(std::string_view type, bool is_mutable, Span span)
-	  : Node(span), m_type(type), m_is_mutable(is_mutable) {}
+	explicit Type(std::string_view type, TypeFlags flags, Span span)
+	  : Node(span), m_type(type), m_flags(flags) {}
 
 	virtual void dump() const override;
 
+	int flags() const { return m_flags; }
+
+	bool is_mutable() const { return m_flags & PF_IsMutable; }
+	bool is_weak_pointer() const { return m_flags & PF_IsWeakPointer; }
+	bool is_strong_pointer() const { return m_flags & PF_IsStrongPointer; }
+	bool is_pointer() const { return is_weak_pointer() || is_strong_pointer(); }
+	bool is_referenced_type_mutable() const { return m_flags & PF_IsReferencedTypeMutable; }
+
 private:
 	std::string_view m_type;
-	bool m_is_mutable;
+	int m_flags;
 };
 
-class ExpressionStatement : public Statement {
+class ParenthesizedExpression : public Expression {
 public:
-	explicit ExpressionStatement(std::shared_ptr<Expression const> expression, bool ends_with_semicolon, Span span)
-	  : Statement(span), m_expression(std::move(expression)), m_ends_with_semicolon(ends_with_semicolon) {}
+	explicit ParenthesizedExpression(std::shared_ptr<Expression const> expression, Span span)
+	  : Expression(span), m_expression(std::move(expression)) {}
 
-	virtual bool is_expression_statement() const override { return true; }
 	virtual void dump() const override;
 
 private:
 	std::shared_ptr<Expression const> m_expression;
-	bool m_ends_with_semicolon;
 };
 
 class IntegerLiteral : public Expression {
@@ -260,6 +261,62 @@ private:
 	bool m_is_inclusive;
 };
 
+class BlockExpression : public Expression {
+public:
+	explicit BlockExpression(std::vector<std::shared_ptr<Statement const>> statements, Span span)
+	  : Expression(span), m_statements(std::move(statements)) {}
+
+	virtual void dump() const override;
+	virtual bool has_block() const override { return true; }
+
+private:
+	std::vector<std::shared_ptr<Statement const>> m_statements;
+};
+
+class IfExpression : public Expression {
+public:
+	explicit IfExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> then, std::shared_ptr<Expression const> else_, Span span)
+	  : Expression(span), m_condition(std::move(condition)), m_then(std::move(then)), m_else(std::move(else_)) {}
+
+	virtual void dump() const override;
+	virtual bool has_block() const override { return true; }
+
+private:
+	std::shared_ptr<Expression const> m_condition;
+	std::shared_ptr<BlockExpression const> m_then;
+	std::shared_ptr<Expression const> m_else;
+};
+
+struct FunctionArgument {
+	std::shared_ptr<Identifier const> name;
+	std::shared_ptr<Expression const> value;
+};
+
+class FunctionCallExpression : public Expression {
+public:
+	explicit FunctionCallExpression(std::shared_ptr<Identifier const> name, std::vector<FunctionArgument> arguments, Span span)
+	  : Expression(span), m_name(std::move(name)), m_arguments(std::move(arguments)) {}
+
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Identifier const> m_name;
+	std::vector<FunctionArgument> m_arguments;
+};
+
+class ExpressionStatement : public Statement {
+public:
+	explicit ExpressionStatement(std::shared_ptr<Expression const> expression, bool ends_with_semicolon, Span span)
+	  : Statement(span), m_expression(std::move(expression)), m_ends_with_semicolon(ends_with_semicolon) {}
+
+	virtual bool is_expression_statement() const override { return true; }
+	virtual void dump() const override;
+
+private:
+	std::shared_ptr<Expression const> m_expression;
+	bool m_ends_with_semicolon;
+};
+
 class VariableDeclarationStatement : public Statement {
 public:
 	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> expression, Span span)
@@ -271,18 +328,6 @@ private:
 	std::shared_ptr<Identifier const> m_identifier;
 	std::shared_ptr<Type const> m_type;
 	std::shared_ptr<Expression const> m_expression;
-};
-
-class BlockExpression : public Expression {
-public:
-	explicit BlockExpression(std::vector<std::shared_ptr<Statement const>> statements, Span span)
-	  : Expression(span), m_statements(std::move(statements)) {}
-
-	virtual void dump() const override;
-	virtual bool has_block() const override { return true; }
-
-private:
-	std::vector<std::shared_ptr<Statement const>> m_statements;
 };
 
 struct FunctionParameter {
@@ -303,20 +348,6 @@ private:
 	std::vector<FunctionParameter> m_parameters;
 	std::shared_ptr<Type const> m_return_type;
 	std::shared_ptr<BlockExpression const> m_body;
-};
-
-class IfExpression : public Expression {
-public:
-	explicit IfExpression(std::shared_ptr<Expression const> condition, std::shared_ptr<BlockExpression const> then, std::shared_ptr<Expression const> else_, Span span)
-	  : Expression(span), m_condition(std::move(condition)), m_then(std::move(then)), m_else(std::move(else_)) {}
-
-	virtual void dump() const override;
-	virtual bool has_block() const override { return true; }
-
-private:
-	std::shared_ptr<Expression const> m_condition;
-	std::shared_ptr<BlockExpression const> m_then;
-	std::shared_ptr<Expression const> m_else;
 };
 
 class ForStatement : public Statement {
@@ -356,23 +387,6 @@ public:
 private:
 	std::shared_ptr<Identifier const> m_range_variable;
 	std::shared_ptr<Expression const> m_range_expression;
-};
-
-struct FunctionArgument {
-	std::shared_ptr<Identifier const> name;
-	std::shared_ptr<Expression const> value;
-};
-
-class FunctionCallExpression : public Expression {
-public:
-	explicit FunctionCallExpression(std::shared_ptr<Identifier const> name, std::vector<FunctionArgument> arguments, Span span)
-	  : Expression(span), m_name(std::move(name)), m_arguments(std::move(arguments)) {}
-
-	virtual void dump() const override;
-
-private:
-	std::shared_ptr<Identifier const> m_name;
-	std::vector<FunctionArgument> m_arguments;
 };
 
 class Program : public Node {

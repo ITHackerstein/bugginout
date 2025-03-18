@@ -7,19 +7,17 @@ namespace bo {
 
 namespace AST {
 
-void ParenthesizedExpression::dump() const {
-	fmt::print("{{\"node\":\"ParenthesizedExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print("\"expression\":");
-	m_expression->dump();
+void Type::dump() const {
+	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}]", span().start, span().end);
+	fmt::print(",\"type\":{:?}", m_type);
+	// FIXME: Pretty-print the flags
+	fmt::print(",\"flags\":{}", m_flags);
 	fmt::print("}}");
 }
 
-void Type::dump() const {
-	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}],\"type\":{:?},\"is_mutable\":{}}}", span().start, span().end, m_type, m_is_mutable);
-}
-
-void ExpressionStatement::dump() const {
-	fmt::print("{{\"node\":\"ExpressionStatement\",\"span\":[{},{}],\"ends_with_semicolon\":{},\"expression\":", span().start, span().end, m_ends_with_semicolon);
+void ParenthesizedExpression::dump() const {
+	fmt::print("{{\"node\":\"ParenthesizedExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"expression\":");
 	m_expression->dump();
 	fmt::print("}}");
 }
@@ -121,6 +119,34 @@ void RangeExpression::dump() const {
 	fmt::print("}}");
 }
 
+void BlockExpression::dump() const {
+	fmt::print("{{\"node\":\"BlockExpression\",\"span\":[{},{}],\"statements\":[", span().start, span().end);
+	for (auto const& statement : m_statements) {
+		statement->dump();
+		fmt::print(",");
+	}
+	fmt::print("]}}");
+}
+
+void IfExpression::dump() const {
+	fmt::print("{{\"node\":\"IfExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"condition\":");
+	m_condition->dump();
+	fmt::print(",\"then_block\":");
+	m_then->dump();
+	if (m_else) {
+		fmt::print(",\"else_block\":");
+		m_else->dump();
+	}
+	fmt::print("}}");
+}
+
+void ExpressionStatement::dump() const {
+	fmt::print("{{\"node\":\"ExpressionStatement\",\"span\":[{},{}],\"ends_with_semicolon\":{},\"expression\":", span().start, span().end, m_ends_with_semicolon);
+	m_expression->dump();
+	fmt::print("}}");
+}
+
 void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
 	fmt::print("\"identifier\":");
@@ -135,15 +161,6 @@ void VariableDeclarationStatement::dump() const {
 		m_expression->dump();
 	}
 	fmt::print("}}");
-}
-
-void BlockExpression::dump() const {
-	fmt::print("{{\"node\":\"BlockExpression\",\"span\":[{},{}],\"statements\":[", span().start, span().end);
-	for (auto const& statement : m_statements) {
-		statement->dump();
-		fmt::print(",");
-	}
-	fmt::print("]}}");
 }
 
 void FunctionDeclarationStatement::dump() const {
@@ -167,19 +184,6 @@ void FunctionDeclarationStatement::dump() const {
 	m_return_type->dump();
 	fmt::print(",\"body\":");
 	m_body->dump();
-	fmt::print("}}");
-}
-
-void IfExpression::dump() const {
-	fmt::print("{{\"node\":\"IfExpression\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print("\"condition\":");
-	m_condition->dump();
-	fmt::print(",\"then_block\":");
-	m_then->dump();
-	if (m_else) {
-		fmt::print(",\"else_block\":");
-		m_else->dump();
-	}
 	fmt::print("}}");
 }
 

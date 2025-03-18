@@ -454,13 +454,37 @@ Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statem
 }
 
 Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
-	bool is_mutable = false;
+	int flags = 0;
+	auto span = m_current_token.span();
+
 	if (m_current_token.type() == Token::Type::KW_mut) {
-		is_mutable = true;
+		span = Span::merge(span, m_current_token.span());
+		TRY(consume());
+		flags |= AST::PF_IsMutable;
+	}
+
+	bool allow_next_mutable_token = false;
+	if (m_current_token.type() == Token::Type::Asterisk || m_current_token.type() == Token::Type::Circumflex) {
+		span = Span::merge(span, m_current_token.span());
+		flags |= m_current_token.type() == Token::Type::Asterisk ? AST::PF_IsWeakPointer : AST::PF_IsStrongPointer;
+		TRY(consume());
+		allow_next_mutable_token = true;
+	}
+
+	if (m_current_token.type() == Token::Type::KW_mut) {
+		if (!allow_next_mutable_token) {
+			return Error { "Unexpected 'mut' token!", m_current_token.span() };
+		}
+
+		span = Span::merge(span, m_current_token.span());
+		flags |= AST::PF_IsReferencedTypeMutable;
 		TRY(consume());
 	}
 
 	// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
+	auto type = m_current_token.value();
+	span = Span::merge(span, m_current_token.span());
+
 	switch (m_current_token.type()) {
 	case Token::Type::KW_bool:
 	case Token::Type::KW_char:
@@ -476,13 +500,13 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 	case Token::Type::KW_usize:
 	case Token::Type::Identifier:
 		{
-			auto type = std::make_shared<AST::Type const>(m_current_token.value(), is_mutable, m_current_token.span());
 			TRY(consume());
-			return type;
 		}
 	default:
 		return Error { fmt::format("Expected type, got {:?}!", m_current_token.value()), m_current_token.span() };
 	}
+
+	return std::make_shared<AST::Type const>(type, flags, span);
 }
 
 Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier() {
