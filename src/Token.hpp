@@ -65,6 +65,7 @@ using namespace std::literals;
 	BO_ENUMERATE_TOKEN(LeftParenthesis)       \
 	BO_ENUMERATE_TOKEN(LeftShift)             \
 	BO_ENUMERATE_TOKEN(LeftShiftEquals)       \
+	BO_ENUMERATE_TOKEN(LeftSquareBracket)     \
 	BO_ENUMERATE_TOKEN(LessThan)              \
 	BO_ENUMERATE_TOKEN(LessThanEquals)        \
 	BO_ENUMERATE_TOKEN(Minus)                 \
@@ -82,6 +83,7 @@ using namespace std::literals;
 	BO_ENUMERATE_TOKEN(RightParenthesis)      \
 	BO_ENUMERATE_TOKEN(RightShift)            \
 	BO_ENUMERATE_TOKEN(RightShiftEquals)      \
+	BO_ENUMERATE_TOKEN(RightSquareBracket)    \
 	BO_ENUMERATE_TOKEN(Semicolon)             \
 	BO_ENUMERATE_TOKEN(Solidus)               \
 	BO_ENUMERATE_TOKEN(SolidusEquals)         \

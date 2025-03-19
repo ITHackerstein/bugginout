@@ -350,6 +350,16 @@ Result<Token::Type, Error> Lexer::lex_operator() {
 		}
 	}
 
+	if (m_current_character == '[') {
+		advance();
+		return Token::Type::LeftSquareBracket;
+	}
+
+	if (m_current_character == ']') {
+		advance();
+		return Token::Type::RightSquareBracket;
+	}
+
 	return Error { "unexpected character while lexing", Span { m_current_position - 1, m_current_position - 1 } };
 }
 
