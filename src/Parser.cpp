@@ -157,6 +157,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 		return TRY(parse_unary_expression());
 	}
 
+	// FIXME: Make functions for function calls and array subscript parsing
 	switch (m_current_token.type()) {
 	case Token::Type::Identifier:
 		{
@@ -169,9 +170,26 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 				auto call_expression = std::make_shared<AST::FunctionCallExpression const>(std::move(identifier), std::move(arguments), span);
 
 				return std::static_pointer_cast<AST::Expression const>(std::move(call_expression));
-			} else {
-				return std::static_pointer_cast<AST::Expression const>(std::move(identifier));
 			}
+
+			if (m_current_token.type() == Token::Type::LeftSquareBracket) {
+				// FIXME: Allow generic expressions instead of identifiers for arrays
+
+				span = Span::merge(span, m_current_token.span());
+				TRY(consume());
+
+				auto index = TRY(parse_expression());
+				span = Span::merge(span, index->span());
+
+				span = Span::merge(span, m_current_token.span());
+				TRY(consume(Token::Type::RightSquareBracket));
+
+				auto array_subscript_expression = std::make_shared<AST::ArraySubscriptExpression const>(std::move(identifier), std::move(index), span);
+
+				return std::static_pointer_cast<AST::Expression const>(std::move(array_subscript_expression));
+			}
+
+			return std::static_pointer_cast<AST::Expression const>(std::move(identifier));
 		}
 	case Token::Type::DecimalLiteral:
 	case Token::Type::BinaryLiteral:
@@ -189,6 +207,8 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 
 			return std::static_pointer_cast<AST::Expression const>(std::make_shared<AST::ParenthesizedExpression const>(std::move(expression), span));
 		}
+	case Token::Type::LeftSquareBracket:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_array_expression()));
 	case Token::Type::LeftCurlyBracket:
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_block_expression()));
 	case Token::Type::KW_if:
@@ -406,6 +426,31 @@ Result<std::shared_ptr<AST::IfExpression const>, Error> Parser::parse_if_express
 	return std::make_shared<AST::IfExpression const>(std::move(condition), std::move(then), nullptr, span);
 }
 
+Result<std::shared_ptr<AST::ArrayExpression const>, Error> Parser::parse_array_expression() {
+	auto span = m_current_token.span();
+	TRY(consume(Token::Type::LeftSquareBracket));
+
+	std::vector<std::shared_ptr<AST::Expression const>> elements;
+	while (m_current_token.type() != Token::Type::RightSquareBracket) {
+		auto element = TRY(parse_expression());
+		span = Span::merge(span, element->span());
+
+		elements.push_back(std::move(element));
+
+		if (m_current_token.type() != Token::Type::Comma) {
+			break;
+		}
+
+		span = Span::merge(span, m_current_token.span());
+		TRY(consume());
+	}
+
+	span = Span::merge(span, m_current_token.span());
+	TRY(consume(Token::Type::RightSquareBracket));
+
+	return std::make_shared<AST::ArrayExpression const>(std::move(elements), span);
+}
+
 Result<std::vector<AST::FunctionArgument>, Error> Parser::parse_function_arguments() {
 	// FIXME: Should check the arguments
 	TRY(consume(Token::Type::LeftParenthesis));
@@ -472,8 +517,11 @@ Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statem
 }
 
 Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
-	int flags = 0;
 	auto span = m_current_token.span();
+	std::shared_ptr<AST::Type const> inner_type = nullptr;
+	std::shared_ptr<AST::Expression const> array_size = nullptr;
+	std::shared_ptr<AST::Identifier const> name = nullptr;
+	int flags = 0;
 
 	if (m_current_token.type() == Token::Type::KW_mut) {
 		span = Span::merge(span, m_current_token.span());
@@ -485,17 +533,29 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 		span = Span::merge(span, m_current_token.span());
 		flags |= m_current_token.type() == Token::Type::Asterisk ? AST::PF_IsWeakPointer : AST::PF_IsStrongPointer;
 		TRY(consume());
+	} else if (m_current_token.type() == Token::Type::LeftSquareBracket) {
+		span = Span::merge(span, m_current_token.span());
+		TRY(consume());
+
+		array_size = TRY(parse_expression());
+		span = Span::merge(span, m_current_token.span());
+
+		span = Span::merge(span, m_current_token.span());
+		TRY(consume(Token::Type::RightSquareBracket));
+
+		flags |= AST::PF_IsArray;
 	}
 
 	if (m_current_token.can_be_type()) {
 		span = Span::merge(span, m_current_token.span());
 		// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
-		return std::make_shared<AST::Type const>(TRY(parse_identifier(true)), flags, span);
+		name = TRY(parse_identifier(true));
 	} else {
-		auto inner_type = TRY(parse_type());
+		inner_type = TRY(parse_type());
 		span = Span::merge(span, inner_type->span());
-		return std::make_shared<AST::Type const>(std::move(inner_type), flags, span);
 	}
+
+	return std::make_shared<AST::Type const>(inner_type, array_size, name, flags, span);
 }
 
 Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier(bool allow_keywords) {
@@ -530,7 +590,7 @@ Result<std::vector<AST::FunctionParameter>, Error> Parser::parse_function_parame
 	std::vector<AST::FunctionParameter> parameters;
 
 	TRY(consume(Token::Type::LeftParenthesis));
-	while (true) {
+	while (m_current_token.type() != Token::Type::RightParenthesis) {
 		bool is_anonymous = false;
 		if (m_current_token.type() == Token::Type::KW_anon) {
 			is_anonymous = true;

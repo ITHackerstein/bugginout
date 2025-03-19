@@ -33,6 +33,7 @@ private:
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression_with_restrictions(int restrictions);
 	Result<std::shared_ptr<AST::BlockExpression const>, Error> parse_block_expression();
 	Result<std::shared_ptr<AST::IfExpression const>, Error> parse_if_expression();
+	Result<std::shared_ptr<AST::ArrayExpression const>, Error> parse_array_expression();
 	Result<std::vector<AST::FunctionArgument>, Error> parse_function_arguments();
 
 	Result<std::shared_ptr<AST::Statement const>, Error> parse_statement();
