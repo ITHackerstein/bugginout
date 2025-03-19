@@ -6,16 +6,21 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn find(haystack: mut^ mut char, needle: char): isize {
-	for (@haystack != 0) {
-		if (@haystack == needle) {
+fn find(haystack: [100]i32, needle: i32): isize {
+	for (i in 0..<100) {
+		if (haystack[i] == needle) {
 			return i;
 		}
-
-		++haystack;
 	}
 
 	-1
+}
+
+fn main(): i32 {
+	var arr = [1, 2, 3];
+	var index = find(arr, 2);
+
+	0
 }
 )"sv;
 
