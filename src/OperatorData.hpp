@@ -93,28 +93,12 @@ consteval std::array<unsigned, Token::count()> generate_precedence_table() {
 		++p;
 	}
 
-	// NOTE: Skipping one value for unary &
-	++p;
-
 	{
+		// NOTE: Skipping unary &
 		table[static_cast<std::size_t>(Token::Type::At)] = p;
-		++p;
-	}
-
-	{
 		table[static_cast<std::size_t>(Token::Type::Tilde)] = p;
-		++p;
-	}
-
-	{
 		table[static_cast<std::size_t>(Token::Type::ExclamationMark)] = p;
-		++p;
-	}
-
-	// NOTE: Skipping one value for unary +, -
-	++p;
-
-	{
+		// NOTE: Skipping unary +, -
 		table[static_cast<std::size_t>(Token::Type::PlusPlus)] = p;
 		table[static_cast<std::size_t>(Token::Type::MinusMinus)] = p;
 		++p;
@@ -142,10 +126,9 @@ public:
 		// FIXME: Should probably look for a better way of storing those values.
 		switch (type) {
 		case Token::Type::Ampersand:
-			return 13;
 		case Token::Type::Plus:
 		case Token::Type::Minus:
-			return 17;
+			return 13;
 		default:
 			return precedence_of(type);
 		}
