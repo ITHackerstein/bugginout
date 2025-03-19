@@ -4,10 +4,11 @@
 
 ```
 TYPE:
-	IS_MUTABLE? IS_POINTER? INNER_TYPE
+	IS_MUTABLE? (IS_POINTER | IS_ARRAY)? INNER_TYPE
 
 IS_MUTABLE: "mut"
 IS_POINTER: "^" | "*"
+IS_ARRAY: "[ INTEGER_LITERAL "]"
 INNER_TYPE: TYPE | IDENTIFIER
 ```
 
@@ -40,9 +41,13 @@ Pointers in this language can be weak, meaning they can be _null_ (point to noth
 
 Weak pointers are denoted with a `*` (example: `int*`) and strong pointers are denoted with a `^` (example: `int^`).
 
+### Array types
+
+Arrays are static and so must have a size known at compile-time. They are defined like this `[size]type`.
+
 ### Other types
 
-> **TODO**: arrays, user-defined types, standard-types
+> **TODO**: user-defined types, standard-types
 
 ## Identifiers
 
@@ -109,27 +114,22 @@ SUFFIX: "_" ("u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "usiz
 
 The following operators can be used in expressions (listed in order of precedence):
 
-| Operator                                                                                                                            | Associativity | Description                         |
-|-------------------------------------------------------------------------------------------------------------------------------------|---------------|-------------------------------------|
-| `a++`,`a--`                                                                                                                         | Left          | Postfix increment/decrement         |
-| `++a`,`--a`                                                                                                                         | Right         | Prefix increment/decrement          |
-| `+a`,`-a`                                                                                                                           | Right         | Unary plus/minus                    |
-| `!a`                                                                                                                                | Right         | Logical NOT                         |
-| `~a`                                                                                                                                | Right         | Bitwise NOT                         |
-| `@a`                                                                                                                                | Right         | Pointer dereference                 |
-| `&a`                                                                                                                                | Right         | Address of                          |
-| `a * b`,`a / b`,`a % b`                                                                                                             | Left          | Multiplication, division and modulo |
-| `a + b`,`a - b`                                                                                                                     | Left          | Addition, subtraction               |
-| `a << b`,`a >> b`                                                                                                                   | Left          | Bitwise left/right shift            |
-| `a < b`,`a > b`,`a <= b`, `a >= b`                                                                                                  | Left          | Relational operators                |
-| `a == b`,`a != b`                                                                                                                   | Left          | Equality operators                  |
-| `a & b`                                                                                                                             | Left          | Bitwise AND                         |
-| `a ^ b`                                                                                                                             | Left          | Bitwise XOR                         |
-| `a \| b`                                                                                                                            | Left          | Bitwise OR                          |
-| `a && b`                                                                                                                            | Left          | Logical AND                         |
-| `a \|\| b`                                                                                                                          | Left          | Logical OR                          |
-| `a ..< b`,`a ..= b`                                                                                                                 | Right         | Range expression                    |
-| `a = b`,`a += b`,`a -= b`,`a *= b`,`a /= b`,`a %= b`,`a <<= b`,`a >>= b`,`a &= b`,`a ^= b`,`a \|= b`,`a &&= b`,`a \|\|= b`          | Right         | Assignment/update                   |
+| Operator                                                                                                                            | Associativity | Description                                                                                             |
+|-------------------------------------------------------------------------------------------------------------------------------------|---------------|---------------------------------------------------------------------------------------------------------|
+| `a++`,`a--`,`a[]`,`a()`                                                                                                             | Left          | Postfix increment/decrement, subscript, function call                                                   |
+| `++a`,`--a`,`+a`,`-a`,`!a`,`~a`,`@a`,`&a`                                                                                           | Right         | Prefix increment/decrement, unary plus/minus, logical NOT, bitwise NOT, pointer dereference, address of |
+| `a * b`,`a / b`,`a % b`                                                                                                             | Left          | Multiplication, division and modulo                                                                     |
+| `a + b`,`a - b`                                                                                                                     | Left          | Addition, subtraction                                                                                   |
+| `a << b`,`a >> b`                                                                                                                   | Left          | Bitwise left/right shift                                                                                |
+| `a < b`,`a > b`,`a <= b`, `a >= b`                                                                                                  | Left          | Relational operators                                                                                    |
+| `a == b`,`a != b`                                                                                                                   | Left          | Equality operators                                                                                      |
+| `a & b`                                                                                                                             | Left          | Bitwise AND                                                                                             |
+| `a ^ b`                                                                                                                             | Left          | Bitwise XOR                                                                                             |
+| `a \| b`                                                                                                                            | Left          | Bitwise OR                                                                                              |
+| `a && b`                                                                                                                            | Left          | Logical AND                                                                                             |
+| `a \|\| b`                                                                                                                          | Left          | Logical OR                                                                                              |
+| `a ..< b`,`a ..= b`                                                                                                                 | Right         | Range expression                                                                                        |
+| `a = b`,`a += b`,`a -= b`,`a *= b`,`a /= b`,`a %= b`,`a <<= b`,`a >>= b`,`a &= b`,`a ^= b`,`a \|= b`,`a &&= b`,`a \|\|= b`          | Right         | Assignment/update                                                                                       |
 
 The order of evaluation of an expression can be changed using parenthesis `()`.
 
@@ -175,6 +175,22 @@ IF_EXPRESSION:
 ```
 RANGE_EXPRESSION:
 	EXPRESSION ("..<" | "..=") EXPRESSION
+```
+
+### Array expressions
+
+```
+ARRAY_EXPRESSION:
+	"[" ARRAY_ELEMENTS? "]"
+
+ARRAY_ELEMENTS:
+	EXPRESSION "," ARRAY_ELEMENTS | EXPRESSION
+```
+
+### Array subscript expressions
+
+```
+ARRAY_SUBSCRIPT_EXPRESSION: EXPRESSION "[" EXPRESSION "]"
 ```
 
 ## Statements
