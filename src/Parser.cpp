@@ -481,57 +481,29 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 		flags |= AST::PF_IsMutable;
 	}
 
-	bool allow_next_mutable_token = false;
 	if (m_current_token.type() == Token::Type::Asterisk || m_current_token.type() == Token::Type::Circumflex) {
 		span = Span::merge(span, m_current_token.span());
 		flags |= m_current_token.type() == Token::Type::Asterisk ? AST::PF_IsWeakPointer : AST::PF_IsStrongPointer;
 		TRY(consume());
-		allow_next_mutable_token = true;
 	}
 
-	if (m_current_token.type() == Token::Type::KW_mut) {
-		if (!allow_next_mutable_token) {
-			return Error { "Unexpected 'mut' token!", m_current_token.span() };
-		}
-
+	if (m_current_token.can_be_type()) {
 		span = Span::merge(span, m_current_token.span());
-		flags |= AST::PF_IsReferencedTypeMutable;
-		TRY(consume());
+		// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
+		return std::make_shared<AST::Type const>(TRY(parse_identifier(true)), flags, span);
+	} else {
+		auto inner_type = TRY(parse_type());
+		span = Span::merge(span, inner_type->span());
+		return std::make_shared<AST::Type const>(std::move(inner_type), flags, span);
 	}
-
-	// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
-	auto type = m_current_token.value();
-	span = Span::merge(span, m_current_token.span());
-
-	switch (m_current_token.type()) {
-	case Token::Type::KW_bool:
-	case Token::Type::KW_char:
-	case Token::Type::KW_i16:
-	case Token::Type::KW_i32:
-	case Token::Type::KW_i64:
-	case Token::Type::KW_i8:
-	case Token::Type::KW_isize:
-	case Token::Type::KW_u16:
-	case Token::Type::KW_u32:
-	case Token::Type::KW_u64:
-	case Token::Type::KW_u8:
-	case Token::Type::KW_usize:
-	case Token::Type::Identifier:
-		{
-			TRY(consume());
-			break;
-		}
-	default:
-		return Error { fmt::format("Expected type, got {:?}!", m_current_token.value()), m_current_token.span() };
-	}
-
-	return std::make_shared<AST::Type const>(type, flags, span);
 }
 
-Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier() {
+Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier(bool allow_keywords) {
 	// FIXME: Switch to something better
-	if (m_current_token.type() != Token::Type::Identifier) {
-		return Error { fmt::format("Expected identifier, got {:?}!", m_current_token.value()), m_current_token.span() };
+	if (m_current_token.type() != Token::Type::Identifier && (!allow_keywords || !m_current_token.is_keyword())) {
+		if (!allow_keywords && m_current_token.is_keyword()) {
+			return Error { fmt::format("Expected identifier, got {:?}!", m_current_token.value()), m_current_token.span() };
+		}
 	}
 
 	auto identifier_value = m_current_token.value();

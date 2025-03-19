@@ -6,7 +6,7 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn find(haystack: mut ^char, needle: char): isize {
+fn find(haystack: mut^ mut char, needle: char): isize {
 	for (@haystack != 0) {
 		if (@haystack == needle) {
 			return i;

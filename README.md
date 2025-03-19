@@ -2,6 +2,15 @@
 
 ## Types
 
+```
+TYPE:
+	IS_MUTABLE? IS_POINTER? INNER_TYPE
+
+IS_MUTABLE: "mut"
+IS_POINTER: "^" | "*"
+INNER_TYPE: TYPE | IDENTIFIER
+```
+
 ### Integer types
 
 | Type  | Description             |

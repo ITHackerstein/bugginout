@@ -48,13 +48,16 @@ enum TypeFlags : int {
 	PF_IsMutable = 1 << 0,
 	PF_IsWeakPointer = 1 << 1,
 	PF_IsStrongPointer = 1 << 2,
-	PF_IsReferencedTypeMutable = 1 << 3
 };
 
+class Identifier;
 class Type : public Node {
 public:
-	explicit Type(std::string_view type, int flags, Span span)
-	  : Node(span), m_type(type), m_flags(flags) {}
+	explicit Type(std::shared_ptr<Type const> inner_type, int flags, Span span)
+	  : Node(span), m_inner_type(std::move(inner_type)), m_name(nullptr), m_flags(flags) {}
+
+	explicit Type(std::shared_ptr<Identifier const> name, int flags, Span span)
+	  : Node(span), m_inner_type(nullptr), m_name(name), m_flags(flags) {}
 
 	virtual void dump() const override;
 
@@ -64,10 +67,10 @@ public:
 	bool is_weak_pointer() const { return m_flags & PF_IsWeakPointer; }
 	bool is_strong_pointer() const { return m_flags & PF_IsStrongPointer; }
 	bool is_pointer() const { return is_weak_pointer() || is_strong_pointer(); }
-	bool is_referenced_type_mutable() const { return m_flags & PF_IsReferencedTypeMutable; }
 
 private:
-	std::string_view m_type;
+	std::shared_ptr<Type const> m_inner_type;
+	std::shared_ptr<Identifier const> m_name;
 	int m_flags;
 };
 

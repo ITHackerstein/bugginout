@@ -22,7 +22,7 @@ private:
 	bool match_secondary_expression() const;
 
 	Result<std::shared_ptr<AST::Type const>, Error> parse_type();
-	Result<std::shared_ptr<AST::Identifier const>, Error> parse_identifier();
+	Result<std::shared_ptr<AST::Identifier const>, Error> parse_identifier(bool allow_keywords = false);
 	Result<std::shared_ptr<AST::IntegerLiteral const>, Error> parse_integer_literal();
 
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_unary_expression();

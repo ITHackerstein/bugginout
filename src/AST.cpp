@@ -9,7 +9,15 @@ namespace AST {
 
 void Type::dump() const {
 	fmt::print("{{\"node\":\"Type\",\"span\":[{},{}]", span().start, span().end);
-	fmt::print(",\"type\":{:?}", m_type);
+	if (m_inner_type) {
+		fmt::print(",\"inner_type\":");
+		m_inner_type->dump();
+	}
+
+	if (m_name) {
+		fmt::print(",\"name\":");
+		m_name->dump();
+	}
 	// FIXME: Pretty-print the flags
 	fmt::print(",\"flags\":{}", m_flags);
 	fmt::print("}}");

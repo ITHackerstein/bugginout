@@ -105,6 +105,38 @@ public:
 	explicit Token(Type type, std::string_view value, Span span)
 	  : m_type(type), m_value(value), m_span(span) {}
 
+	inline bool is_keyword() const {
+		switch (m_type) {
+#define BO_ENUMERATE_KEYWORD(x) case Token::Type::KW_##x:
+			_BO_ENUMERATE_KEYWORDS
+			return true;
+#undef BO_ENUMERATE_KEYWORD
+		default:
+			return false;
+		}
+	}
+
+	inline bool can_be_type() const {
+		switch (m_type) {
+		case Token::Type::KW_bool:
+		case Token::Type::KW_char:
+		case Token::Type::KW_i8:
+		case Token::Type::KW_i16:
+		case Token::Type::KW_i32:
+		case Token::Type::KW_i64:
+		case Token::Type::KW_isize:
+		case Token::Type::KW_u8:
+		case Token::Type::KW_u16:
+		case Token::Type::KW_u32:
+		case Token::Type::KW_u64:
+		case Token::Type::KW_usize:
+		case Token::Type::Identifier:
+			return true;
+		default:
+			return false;
+		}
+	}
+
 	Type type() const { return m_type; }
 	std::string_view value() const { return m_value; }
 	Span span() const { return m_span; }
