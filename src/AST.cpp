@@ -14,10 +14,16 @@ void Type::dump() const {
 		m_inner_type->dump();
 	}
 
+	if (m_array_size) {
+		fmt::print(",\"array_size\":");
+		m_array_size->dump();
+	}
+
 	if (m_name) {
 		fmt::print(",\"name\":");
 		m_name->dump();
 	}
+
 	// FIXME: Pretty-print the flags
 	fmt::print(",\"flags\":{}", m_flags);
 	fmt::print("}}");
@@ -174,6 +180,27 @@ void FunctionCallExpression::dump() const {
 		}
 	}
 	fmt::print("]}}");
+}
+
+void ArrayExpression::dump() const {
+	fmt::print("{{\"node\":\"ArrayExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"elements\":[");
+	for (std::size_t i = 0; i < m_elements.size(); ++i) {
+		m_elements[i]->dump();
+		if (i != m_elements.size() - 1) {
+			fmt::print(",");
+		}
+	}
+	fmt::print("]}}");
+}
+
+void ArraySubscriptExpression::dump() const {
+	fmt::print("{{\"node\":\"ArraySubscriptExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print("\"array\":");
+	m_array->dump();
+	fmt::print(",\"index\":");
+	m_index->dump();
+	fmt::print("}}");
 }
 
 void ExpressionStatement::dump() const {
