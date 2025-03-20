@@ -44,11 +44,17 @@ protected:
 	  : Node(span) {}
 };
 
+#define _BO_ENUMERATE_TYPE_FLAGS             \
+	BO_ENUMERATE_TYPE_FLAG(IsMutable, 0)       \
+	BO_ENUMERATE_TYPE_FLAG(IsWeakPointer, 1)   \
+	BO_ENUMERATE_TYPE_FLAG(IsStrongPointer, 2) \
+	BO_ENUMERATE_TYPE_FLAG(IsArray, 3)         \
+	BO_ENUMERATE_TYPE_FLAG(IsSlice, 4)
+
 enum TypeFlags : int {
-	PF_IsMutable = 1 << 0,
-	PF_IsWeakPointer = 1 << 1,
-	PF_IsStrongPointer = 1 << 2,
-	PF_IsArray = 1 << 3
+#define BO_ENUMERATE_TYPE_FLAG(x, y) PF_##x = 1 << (y),
+	_BO_ENUMERATE_TYPE_FLAGS
+#undef BO_ENUMERATE_TYPE_FLAG
 };
 
 class Identifier;
@@ -67,6 +73,7 @@ public:
 	bool is_strong_pointer() const { return m_flags & PF_IsStrongPointer; }
 	bool is_pointer() const { return is_weak_pointer() || is_strong_pointer(); }
 	bool is_array() const { return m_flags & PF_IsArray; }
+	bool is_slice() const { return m_flags & PF_IsSlice; }
 
 private:
 	std::shared_ptr<Type const> m_inner_type;

@@ -6,7 +6,7 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn find(haystack: [100]i32, needle: i32): isize {
+fn find(haystack: []i32, needle: i32): isize {
 	for (i in 0..<100) {
 		if (haystack[i] == needle) {
 			return i;

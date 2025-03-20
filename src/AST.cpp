@@ -24,8 +24,18 @@ void Type::dump() const {
 		m_name->dump();
 	}
 
-	// FIXME: Pretty-print the flags
-	fmt::print(",\"flags\":{}", m_flags);
+	std::string flags;
+#define BO_ENUMERATE_TYPE_FLAG(x, y)     \
+	if (m_flags & PF_##x) {                \
+		flags += fmt::format("\"{}\",", #x); \
+	}
+	_BO_ENUMERATE_TYPE_FLAGS
+#undef BO_ENUMERATE_TYPE_FLAG
+	if (!flags.empty()) {
+		flags.pop_back();
+	}
+
+	fmt::print(",\"flags\":[{}]", flags);
 	fmt::print("}}");
 }
 

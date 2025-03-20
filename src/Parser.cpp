@@ -537,13 +537,17 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 		span = Span::merge(span, m_current_token.span());
 		TRY(consume());
 
-		array_size = TRY(parse_expression());
-		span = Span::merge(span, m_current_token.span());
+		if (m_current_token.type() != Token::Type::RightSquareBracket) {
+			array_size = TRY(parse_expression());
+			span = Span::merge(span, m_current_token.span());
+
+			flags |= AST::PF_IsArray;
+		} else {
+			flags |= AST::PF_IsSlice;
+		}
 
 		span = Span::merge(span, m_current_token.span());
 		TRY(consume(Token::Type::RightSquareBracket));
-
-		flags |= AST::PF_IsArray;
 	}
 
 	if (m_current_token.can_be_type()) {
