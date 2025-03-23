@@ -30,7 +30,8 @@ using namespace std::literals;
 	BO_ENUMERATE_KEYWORD(u64)    \
 	BO_ENUMERATE_KEYWORD(u8)     \
 	BO_ENUMERATE_KEYWORD(usize)  \
-	BO_ENUMERATE_KEYWORD(var)
+	BO_ENUMERATE_KEYWORD(var)    \
+	BO_ENUMERATE_KEYWORD(void)
 
 #define _BO_ENUMERATE_TOKENS                \
 	_BO_ENUMERATE_KEYWORDS                    \
@@ -132,6 +133,7 @@ public:
 		case Token::Type::KW_u32:
 		case Token::Type::KW_u64:
 		case Token::Type::KW_usize:
+		case Token::Type::KW_void:
 		case Token::Type::Identifier:
 			return true;
 		default:
