@@ -358,6 +358,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_expression_w
 Result<std::shared_ptr<AST::Statement const>, Error> Parser::parse_statement() {
 	switch (m_current_token.type()) {
 	case Token::Type::KW_var:
+	case Token::Type::KW_mut:
 		return std::static_pointer_cast<AST::Statement const>(TRY(parse_variable_declaration_statement()));
 	case Token::Type::KW_for:
 		return std::static_pointer_cast<AST::Statement const>(TRY(parse_for_statement()));
@@ -457,17 +458,23 @@ Result<std::vector<AST::FunctionArgument>, Error> Parser::parse_function_argumen
 	std::vector<AST::FunctionArgument> arguments;
 	while (m_current_token.type() != Token::Type::RightParenthesis) {
 		auto argument = TRY(parse_expression());
+
+		std::shared_ptr<AST::Identifier const> argument_name = nullptr;
+		std::shared_ptr<AST::Expression const> argument_value = nullptr;
+
 		if (argument->is_identifier()) {
-			auto argument_name = std::static_pointer_cast<AST::Identifier const>(argument);
+			argument_name = std::static_pointer_cast<AST::Identifier const>(argument);
 
 			if (m_current_token.type() == Token::Type::Colon) {
-				arguments.emplace_back(argument_name, TRY(parse_expression()));
+				argument_value = TRY(parse_expression());
 			} else {
-				arguments.emplace_back(argument_name, argument_name);
+				argument_value = argument_name;
 			}
 		} else {
-			arguments.emplace_back(nullptr, std::move(argument));
+			argument_value = argument;
 		}
+
+		arguments.emplace_back(argument_name, argument_value);
 
 		if (m_current_token.type() != Token::Type::Comma) {
 			break;
@@ -519,7 +526,7 @@ Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statem
 Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 	auto span = m_current_token.span();
 	std::shared_ptr<AST::Type const> inner_type = nullptr;
-	std::shared_ptr<AST::Expression const> array_size = nullptr;
+	std::shared_ptr<AST::IntegerLiteral const> array_size = nullptr;
 	std::shared_ptr<AST::Identifier const> name = nullptr;
 	int flags = 0;
 
@@ -533,12 +540,15 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 		span = Span::merge(span, m_current_token.span());
 		flags |= m_current_token.type() == Token::Type::Asterisk ? AST::PF_IsWeakPointer : AST::PF_IsStrongPointer;
 		TRY(consume());
+
+		inner_type = TRY(parse_type());
+		span = Span::merge(span, inner_type->span());
 	} else if (m_current_token.type() == Token::Type::LeftSquareBracket) {
 		span = Span::merge(span, m_current_token.span());
 		TRY(consume());
 
 		if (m_current_token.type() != Token::Type::RightSquareBracket) {
-			array_size = TRY(parse_expression());
+			array_size = TRY(parse_integer_literal());
 			span = Span::merge(span, m_current_token.span());
 
 			flags |= AST::PF_IsArray;
@@ -548,18 +558,15 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 
 		span = Span::merge(span, m_current_token.span());
 		TRY(consume(Token::Type::RightSquareBracket));
-	}
 
-	if (m_current_token.can_be_type()) {
-		span = Span::merge(span, m_current_token.span());
-		// FIXME: In the future we will have to check if the type is defined, or probably delegate that job to the C++ compiler
-		name = TRY(parse_identifier(true));
-	} else {
 		inner_type = TRY(parse_type());
 		span = Span::merge(span, inner_type->span());
+	} else {
+		name = TRY(parse_identifier(true));
+		span = Span::merge(span, name->span());
 	}
 
-	return std::make_shared<AST::Type const>(inner_type, array_size, name, flags, span);
+	return std::make_shared<AST::Type const>(std::move(inner_type), std::move(array_size), std::move(name), flags, span);
 }
 
 Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier(bool allow_keywords) {
@@ -577,17 +584,33 @@ Result<std::shared_ptr<AST::Identifier const>, Error> Parser::parse_identifier(b
 }
 
 Result<std::shared_ptr<AST::IntegerLiteral const>, Error> Parser::parse_integer_literal() {
-	if (m_current_token.type() != Token::Type::DecimalLiteral
-	    && m_current_token.type() != Token::Type::BinaryLiteral
-	    && m_current_token.type() != Token::Type::OctalLiteral
-	    && m_current_token.type() != Token::Type::HexadecimalLiteral) {
+	AST::IntegerLiteral::Type literal_type;
+	switch (m_current_token.type()) {
+	case Token::Type::DecimalLiteral:
+		literal_type = AST::IntegerLiteral::Type::Decimal;
+		break;
+	case Token::Type::BinaryLiteral:
+		literal_type = AST::IntegerLiteral::Type::Binary;
+		break;
+	case Token::Type::OctalLiteral:
+		literal_type = AST::IntegerLiteral::Type::Octal;
+		break;
+	case Token::Type::HexadecimalLiteral:
+		literal_type = AST::IntegerLiteral::Type::Hexadecimal;
+		break;
+	default:
 		return Error { fmt::format("Expected integer literal, got {:?}!", m_current_token.value()), m_current_token.span() };
 	}
 
 	auto literal_value = m_current_token.value();
 	auto literal_span = m_current_token.span();
 	TRY(consume());
-	return std::make_shared<AST::IntegerLiteral const>(literal_value, literal_span);
+
+	auto literal_suffix_start = literal_value.find('_');
+	auto literal_suffix = literal_suffix_start == std::string_view::npos ? ""sv : literal_value.substr(literal_suffix_start + 1);
+	literal_value = literal_value.substr(0, literal_suffix_start);
+
+	return std::make_shared<AST::IntegerLiteral const>(literal_value, literal_type, literal_suffix, literal_span);
 }
 
 Result<std::vector<AST::FunctionParameter>, Error> Parser::parse_function_parameters() {
@@ -634,29 +657,41 @@ Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::
 
 Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::parse_variable_declaration_statement() {
 	auto span = m_current_token.span();
-	TRY(consume(Token::Type::KW_var));
+
+	bool starts_with_mut = false;
+	if (m_current_token.type() == Token::Type::KW_mut) {
+		TRY(consume());
+		starts_with_mut = true;
+	} else {
+		TRY(consume(Token::Type::KW_var));
+	}
+
 	auto identifier = TRY(parse_identifier());
 	std::shared_ptr<AST::Type const> type = nullptr;
-	std::shared_ptr<AST::Expression const> expression = nullptr;
+	std::shared_ptr<AST::Expression const> initializer = nullptr;
 
 	if (m_current_token.type() == Token::Type::Equals) {
 		TRY(consume());
-		expression = TRY(parse_expression());
+		initializer = TRY(parse_expression());
 	} else if (m_current_token.type() == Token::Type::Colon) {
+		if (starts_with_mut) {
+			return Error { "Cannot use 'mut' with type annotations!", m_current_token.span() };
+		}
+
 		TRY(consume());
 		type = TRY(parse_type());
 
 		if (m_current_token.type() == Token::Type::Equals) {
 			TRY(consume());
-			expression = TRY(parse_expression());
+			initializer = TRY(parse_expression());
 		}
 	} else {
 		return Error { fmt::format("Expected ':' or '=', got {:?}!", m_current_token.value()), m_current_token.span() };
 	}
 
-	TRY(consume(Token::Type::Semicolon));
 	span = Span::merge(span, m_current_token.span());
-	return std::make_shared<AST::VariableDeclarationStatement const>(std::move(identifier), std::move(type), std::move(expression), span);
+	TRY(consume(Token::Type::Semicolon));
+	return std::make_shared<AST::VariableDeclarationStatement const>(starts_with_mut, std::move(identifier), std::move(type), std::move(initializer), span);
 }
 
 Result<std::shared_ptr<AST::ReturnStatement const>, Error> Parser::parse_return_statement() {

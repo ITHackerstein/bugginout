@@ -14,6 +14,8 @@ public:
 	virtual ~Node() = default;
 
 	virtual void dump() const = 0;
+	virtual bool is_expression() const { return false; }
+	virtual bool is_statement() const { return false; }
 
 	Span span() const { return m_span; }
 
@@ -27,7 +29,22 @@ private:
 
 class Expression : public Node {
 public:
+	virtual bool is_expression() const override { return true; }
+	virtual bool is_parenthesized_expression() const { return false; }
+	virtual bool is_integer_literal() const { return false; }
 	virtual bool is_identifier() const { return false; }
+	virtual bool is_binary_expression() const { return false; }
+	virtual bool is_unary_expression() const { return false; }
+	virtual bool is_assignment_expression() const { return false; }
+	virtual bool is_update_expression() const { return false; }
+	virtual bool is_pointer_dereference_expression() const { return false; }
+	virtual bool is_address_of_expression() const { return false; }
+	virtual bool is_range_expression() const { return false; }
+	virtual bool is_block_expression() const { return false; }
+	virtual bool is_if_expression() const { return false; }
+	virtual bool is_function_call_expression() const { return false; }
+	virtual bool is_array_expression() const { return false; }
+	virtual bool is_array_subscription_expression() const { return false; }
 	virtual bool has_block() const { return false; }
 
 protected:
@@ -37,7 +54,11 @@ protected:
 
 class Statement : public Node {
 public:
+	virtual bool is_statement() const override { return true; }
 	virtual bool is_expression_statement() const { return false; }
+	virtual bool is_variable_declaration() const { return false; }
+	virtual bool is_for_statement() const { return false; }
+	virtual bool is_return_statement() const { return false; }
 
 protected:
 	explicit Statement(Span span)
@@ -61,8 +82,8 @@ class Identifier;
 class IntegerLiteral;
 class Type : public Node {
 public:
-	explicit Type(std::shared_ptr<Type const> inner_type, std::shared_ptr<Expression const> array_size, std::shared_ptr<Identifier const> name, int flags, Span span)
-	  : Node(span), m_inner_type(inner_type), m_array_size(array_size), m_name(name), m_flags(flags) {}
+	explicit Type(std::shared_ptr<Type const> inner_type, std::shared_ptr<IntegerLiteral const> array_size, std::shared_ptr<Identifier const> name, int flags, Span span)
+	  : Node(span), m_inner_type(std::move(inner_type)), m_array_size(std::move(array_size)), m_name(std::move(name)), m_flags(flags) {}
 
 	virtual void dump() const override;
 
@@ -75,9 +96,13 @@ public:
 	bool is_array() const { return m_flags & PF_IsArray; }
 	bool is_slice() const { return m_flags & PF_IsSlice; }
 
+	std::shared_ptr<Type const> inner_type() const { return m_inner_type; }
+	std::shared_ptr<IntegerLiteral const> array_size() const { return m_array_size; }
+	std::shared_ptr<Identifier const> name() const { return m_name; }
+
 private:
 	std::shared_ptr<Type const> m_inner_type;
-	std::shared_ptr<Expression const> m_array_size;
+	std::shared_ptr<IntegerLiteral const> m_array_size;
 	std::shared_ptr<Identifier const> m_name;
 	int m_flags;
 };
@@ -88,6 +113,9 @@ public:
 	  : Expression(span), m_expression(std::move(expression)) {}
 
 	virtual void dump() const override;
+	virtual bool is_parenthesized_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> expression() const { return m_expression; }
 
 private:
 	std::shared_ptr<Expression const> m_expression;
@@ -95,13 +123,27 @@ private:
 
 class IntegerLiteral : public Expression {
 public:
-	explicit IntegerLiteral(std::string_view value, Span span)
-	  : Expression(span), m_value(value) {}
+	enum class Type {
+		Decimal,
+		Binary,
+		Octal,
+		Hexadecimal
+	};
+
+	explicit IntegerLiteral(std::string_view value, Type type, std::string_view suffix, Span span)
+	  : Expression(span), m_value(value), m_type(type), m_suffix(suffix) {}
 
 	virtual void dump() const override;
+	virtual bool is_integer_literal() const override { return true; }
+
+	std::string_view value() const { return m_value; }
+	Type type() const { return m_type; }
+	std::string_view suffix() const { return m_suffix; }
 
 private:
 	std::string_view m_value;
+	Type m_type;
+	std::string_view m_suffix;
 };
 
 class Identifier : public Expression {
@@ -110,8 +152,9 @@ public:
 	  : Expression(span), m_id(id) {}
 
 	virtual void dump() const override;
-
 	virtual bool is_identifier() const override { return true; }
+
+	std::string_view id() const { return m_id; }
 
 private:
 	std::string_view m_id;
@@ -149,6 +192,11 @@ public:
 	  : Expression(span), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
 
 	virtual void dump() const override;
+	virtual bool is_binary_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> lhs() const { return m_lhs; }
+	std::shared_ptr<Expression const> rhs() const { return m_rhs; }
+	BinaryOperator op() const { return m_op; }
 
 private:
 	std::shared_ptr<Expression const> m_lhs;
@@ -174,6 +222,10 @@ public:
 	  : Expression(span), m_operand(std::move(operand)), m_op(op) {}
 
 	virtual void dump() const override;
+	virtual bool is_unary_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> operand() const { return m_operand; }
+	UnaryOperator op() const { return m_op; }
 
 private:
 	std::shared_ptr<Expression const> m_operand;
@@ -207,6 +259,11 @@ public:
 	  : Expression(span), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
 
 	virtual void dump() const override;
+	virtual bool is_assignment_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> lhs() const { return m_lhs; }
+	std::shared_ptr<Expression const> rhs() const { return m_rhs; }
+	AssignmentOperator op() const { return m_op; }
 
 private:
 	std::shared_ptr<Expression const> m_lhs;
@@ -230,6 +287,11 @@ public:
 	  : Expression(span), m_operand(std::move(operand)), m_op(op), m_is_prefixed(is_prefixed) {}
 
 	virtual void dump() const override;
+	virtual bool is_update_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> operand() const { return m_operand; }
+	UpdateOperator op() const { return m_op; }
+	bool is_prefixed() const { return m_is_prefixed; }
 
 private:
 	std::shared_ptr<Expression const> m_operand;
@@ -243,6 +305,9 @@ public:
 	  : Expression(span), m_operand(std::move(operand)) {}
 
 	virtual void dump() const override;
+	virtual bool is_pointer_dereference_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> operand() const { return m_operand; }
 
 private:
 	std::shared_ptr<Expression const> m_operand;
@@ -254,6 +319,9 @@ public:
 	  : Expression(span), m_operand(std::move(operand)) {}
 
 	virtual void dump() const override;
+	virtual bool is_address_of_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> operand() const { return m_operand; }
 
 private:
 	std::shared_ptr<Expression const> m_operand;
@@ -265,6 +333,11 @@ public:
 	  : Expression(span), m_start(std::move(start)), m_end(std::move(end)), m_is_inclusive(is_inclusive) {}
 
 	virtual void dump() const override;
+	virtual bool is_range_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> start() const { return m_start; }
+	std::shared_ptr<Expression const> end() const { return m_end; }
+	bool is_inclusive() const { return m_is_inclusive; }
 
 private:
 	std::shared_ptr<Expression const> m_start;
@@ -278,7 +351,10 @@ public:
 	  : Expression(span), m_statements(std::move(statements)) {}
 
 	virtual void dump() const override;
+	virtual bool is_block_expression() const override { return true; }
 	virtual bool has_block() const override { return true; }
+
+	std::vector<std::shared_ptr<Statement const>> const& statements() const { return m_statements; }
 
 private:
 	std::vector<std::shared_ptr<Statement const>> m_statements;
@@ -290,7 +366,12 @@ public:
 	  : Expression(span), m_condition(std::move(condition)), m_then(std::move(then)), m_else(std::move(else_)) {}
 
 	virtual void dump() const override;
+	virtual bool is_if_expression() const override { return true; }
 	virtual bool has_block() const override { return true; }
+
+	std::shared_ptr<Expression const> condition() const { return m_condition; }
+	std::shared_ptr<BlockExpression const> then() const { return m_then; }
+	std::shared_ptr<Expression const> else_() const { return m_else; }
 
 private:
 	std::shared_ptr<Expression const> m_condition;
@@ -309,6 +390,10 @@ public:
 	  : Expression(span), m_name(std::move(name)), m_arguments(std::move(arguments)) {}
 
 	virtual void dump() const override;
+	virtual bool is_function_call_expression() const override { return true; }
+
+	std::shared_ptr<Identifier const> name() const { return m_name; }
+	std::vector<FunctionArgument> const& arguments() const { return m_arguments; }
 
 private:
 	std::shared_ptr<Identifier const> m_name;
@@ -321,6 +406,9 @@ public:
 	  : Expression(span), m_elements(std::move(elements)) {}
 
 	virtual void dump() const override;
+	virtual bool is_array_expression() const override { return true; }
+
+	std::vector<std::shared_ptr<Expression const>> const& elements() const { return m_elements; }
 
 private:
 	std::vector<std::shared_ptr<Expression const>> m_elements;
@@ -332,6 +420,10 @@ public:
 	  : Expression(span), m_array(std::move(array)), m_index(std::move(index)) {}
 
 	virtual void dump() const override;
+	virtual bool is_array_subscription_expression() const override { return true; }
+
+	std::shared_ptr<Expression const> array() const { return m_array; }
+	std::shared_ptr<Expression const> index() const { return m_index; }
 
 private:
 	std::shared_ptr<Expression const> m_array;
@@ -346,6 +438,9 @@ public:
 	virtual bool is_expression_statement() const override { return true; }
 	virtual void dump() const override;
 
+	std::shared_ptr<Expression const> expression() const { return m_expression; }
+	bool ends_with_semicolon() const { return m_ends_with_semicolon; }
+
 private:
 	std::shared_ptr<Expression const> m_expression;
 	bool m_ends_with_semicolon;
@@ -353,15 +448,22 @@ private:
 
 class VariableDeclarationStatement : public Statement {
 public:
-	explicit VariableDeclarationStatement(std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> expression, Span span)
-	  : Statement(span), m_identifier(std::move(identifier)), m_type(type), m_expression(std::move(expression)) {}
+	explicit VariableDeclarationStatement(bool starts_with_mut, std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> initializer, Span span)
+	  : Statement(span), m_starts_with_mut(starts_with_mut), m_identifier(std::move(identifier)), m_type(std::move(type)), m_initializer(std::move(initializer)) {}
 
 	virtual void dump() const override;
+	virtual bool is_variable_declaration() const override { return true; }
+
+	bool starts_with_mut() const { return m_starts_with_mut; }
+	std::shared_ptr<Identifier const> identifier() const { return m_identifier; }
+	std::shared_ptr<Type const> type() const { return m_type; }
+	std::shared_ptr<Expression const> initializer() const { return m_initializer; }
 
 private:
+	bool m_starts_with_mut;
 	std::shared_ptr<Identifier const> m_identifier;
 	std::shared_ptr<Type const> m_type;
-	std::shared_ptr<Expression const> m_expression;
+	std::shared_ptr<Expression const> m_initializer;
 };
 
 struct FunctionParameter {
@@ -377,6 +479,11 @@ public:
 
 	virtual void dump() const override;
 
+	std::shared_ptr<Identifier const> name() const { return m_name; }
+	std::vector<FunctionParameter> const& parameters() const { return m_parameters; }
+	std::shared_ptr<Type const> return_type() const { return m_return_type; }
+	std::shared_ptr<BlockExpression const> body() const { return m_body; }
+
 private:
 	std::shared_ptr<Identifier const> m_name;
 	std::vector<FunctionParameter> m_parameters;
@@ -385,6 +492,14 @@ private:
 };
 
 class ForStatement : public Statement {
+public:
+	virtual bool is_for_statement() const override { return true; }
+	virtual bool is_infinite() const { return false; }
+	virtual bool is_with_condition() const { return false; }
+	virtual bool is_with_range() const { return false; }
+
+	std::shared_ptr<BlockExpression const> body() const { return m_body; }
+
 protected:
 	explicit ForStatement(std::shared_ptr<BlockExpression const> body, Span span)
 	  : Statement(span), m_body(std::move(body)) {}
@@ -398,6 +513,7 @@ public:
 	  : ForStatement(body, span) {}
 
 	virtual void dump() const override;
+	virtual bool is_infinite() const override { return true; }
 };
 
 class ForWithConditionStatement : public ForStatement {
@@ -406,6 +522,9 @@ public:
 	  : ForStatement(body, span), m_condition(condition) {}
 
 	virtual void dump() const override;
+	virtual bool is_with_condition() const override { return true; }
+
+	std::shared_ptr<Expression const> condition() const { return m_condition; }
 
 private:
 	std::shared_ptr<Expression const> m_condition;
@@ -417,6 +536,10 @@ public:
 	  : ForStatement(body, span), m_range_variable(std::move(range_variable)), m_range_expression(std::move(range_expression)) {}
 
 	virtual void dump() const override;
+	virtual bool is_with_range() const override { return true; }
+
+	std::shared_ptr<Identifier const> range_variable() const { return m_range_variable; }
+	std::shared_ptr<Expression const> range_expression() const { return m_range_expression; }
 
 private:
 	std::shared_ptr<Identifier const> m_range_variable;
@@ -429,6 +552,9 @@ public:
 	  : Statement(span), m_expression(std::move(expression)) {}
 
 	virtual void dump() const override;
+	virtual bool is_return_statement() const override { return true; }
+
+	std::shared_ptr<Expression const> expression() const { return m_expression; }
 
 private:
 	std::shared_ptr<Expression const> m_expression;
@@ -440,6 +566,8 @@ public:
 	  : Node(span), m_functions(std::move(functions)) {}
 
 	virtual void dump() const override;
+
+	std::vector<std::shared_ptr<FunctionDeclarationStatement const>> const& function_declarations() const { return m_functions; }
 
 private:
 	// FIXME: Change to a specific node which will contain all the top level statements

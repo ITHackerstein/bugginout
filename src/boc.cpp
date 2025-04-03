@@ -1,32 +1,31 @@
 #include "Error.hpp"
 #include "Parser.hpp"
+#include "Typechecker.hpp"
 #include "utils/Result.hpp"
 
 #include <fmt/core.h>
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn find(haystack: []i32, needle: i32): isize {
-	for (i in 0..<100) {
-		if (haystack[i] == needle) {
-			return i;
+fn find(haystack: []i32, needle: i32, result: ^mut isize): void {
+	mut i = 0_isize;
+	for (value in haystack) {
+		if (value == needle) {
+			@result = i;
+			return;
 		}
+		++i;
 	}
-
-	-1
-}
-
-fn main(): i32 {
-	var arr = [1, 2, 3];
-	var index = find(arr, 2);
-
-	0
+	@result = -1;
 }
 )"sv;
 
 	auto parser = TRY(bo::Parser::create(source));
 	auto program = TRY(parser.parse_program());
 	program->dump();
+	fmt::println("");
+	bo::Typechecker typechecker { program };
+	TRY(typechecker.check());
 	return {};
 }
 

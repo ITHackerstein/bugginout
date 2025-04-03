@@ -221,17 +221,22 @@ void ExpressionStatement::dump() const {
 
 void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
-	fmt::print("\"identifier\":");
+
+	fmt::print("\"starts_with_mut\":{}", m_starts_with_mut);
+
+	fmt::print(",\"identifier\":");
 	m_identifier->dump();
+
 	if (m_type) {
 		fmt::print(",\"type\":");
 		m_type->dump();
 	}
 
-	if (m_expression) {
-		fmt::print(",\"expression\":");
-		m_expression->dump();
+	if (m_initializer) {
+		fmt::print(",\"initializer\":");
+		m_initializer->dump();
 	}
+
 	fmt::print("}}");
 }
 
