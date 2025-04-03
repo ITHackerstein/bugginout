@@ -137,6 +137,7 @@ public:
 	bool is_builtin() const {
 		// NOTE: Not using the macro here, because clang-format sucks :)
 		auto visitor = overload {
+			[](Void const&) { return true; },
 			[](U8 const&) { return true; },
 			[](U16 const&) { return true; },
 			[](U32 const&) { return true; },
