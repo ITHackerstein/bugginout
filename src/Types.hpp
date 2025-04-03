@@ -40,6 +40,12 @@ using Id = std::size_t;
 _BO_ENUMERATE_BUILTIN_TYPES
 #undef BO_ENUMERATE_BUILTIN_TYPE
 
+enum TypeIDs : Id {
+#define BO_ENUMERATE_BUILTIN_TYPE(klass_name, type_name) builtin_##type_name##_id,
+	_BO_ENUMERATE_BUILTIN_TYPES
+#undef BO_ENUMERATE_BUILTIN_TYPE
+};
+
 class Pointer {
 public:
 	enum class Kind {
@@ -101,22 +107,14 @@ private:
 	// clang-format on
 
 public:
-	static Type builtin_void(bool is_mutable = false) { return Type(Void {}, is_mutable); }
-	static Type builtin_u8(bool is_mutable = false) { return Type(U8 {}, is_mutable); }
-	static Type builtin_u16(bool is_mutable = false) { return Type(U16 {}, is_mutable); }
-	static Type builtin_u32(bool is_mutable = false) { return Type(U32 {}, is_mutable); }
-	static Type builtin_u64(bool is_mutable = false) { return Type(U64 {}, is_mutable); }
-	static Type builtin_usize(bool is_mutable = false) { return Type(USize {}, is_mutable); }
-	static Type builtin_i8(bool is_mutable = false) { return Type(I8 {}, is_mutable); }
-	static Type builtin_i16(bool is_mutable = false) { return Type(I16 {}, is_mutable); }
-	static Type builtin_i32(bool is_mutable = false) { return Type(I32 {}, is_mutable); }
-	static Type builtin_i64(bool is_mutable = false) { return Type(I64 {}, is_mutable); }
-	static Type builtin_isize(bool is_mutable = false) { return Type(ISize {}, is_mutable); }
-	static Type builtin_bool(bool is_mutable = false) { return Type(Bool {}, is_mutable); }
-	static Type builtin_char(bool is_mutable = false) { return Type(Char {}, is_mutable); }
+#define BO_ENUMERATE_BUILTIN_TYPE(klass_name, type_name) \
+	static Type builtin_##type_name(bool is_mutable = false) { return Type(klass_name {}, is_mutable); }
+	_BO_ENUMERATE_BUILTIN_TYPES
+#undef BO_ENUMERATE_BUILTIN_TYPE
 	static Type pointer(Pointer::Kind kind, Id inner_type_id, bool is_mutable = false) { return Type(Pointer { kind, inner_type_id }, is_mutable); }
 	static Type array(std::size_t size, Id inner_type_id, bool is_mutable = false) { return Type(Array { size, inner_type_id }, is_mutable); }
 	static Type slice(Id inner_type_id, bool is_mutable = false) { return Type(Slice { inner_type_id }, is_mutable); }
+
 	static Type apply_mutability(Type const& type, bool is_mutable) {
 		if (type.is_mutable() == is_mutable) {
 			return type;

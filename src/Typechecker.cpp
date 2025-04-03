@@ -193,9 +193,8 @@ Result<void, Error> Typechecker::check_for_statement(std::shared_ptr<AST::ForSta
 
 	if (for_statement->is_with_condition()) {
 		auto for_with_condition = std::static_pointer_cast<AST::ForWithConditionStatement const>(for_statement);
-		auto condition_type = TRY(check_expression(for_with_condition->condition()));
-		// FIXME: Better encode this value, now `bool` = 9
-		if (condition_type != 11) {
+		auto condition_type_id = TRY(check_expression(for_with_condition->condition()));
+		if (!m_types[condition_type_id].is<Types::Bool>()) {
 			return Error { "For condition must be a boolean expression", for_with_condition->condition()->span() };
 		}
 
@@ -311,51 +310,48 @@ Result<Types::Id, Error> Typechecker::check_expression(std::shared_ptr<AST::Expr
 }
 
 Result<Types::Id, Error> Typechecker::check_integer_literal(std::shared_ptr<AST::IntegerLiteral const> integer_literal) {
-	// FIXME: We should do some work in `Types.hpp` to make this more meaningful
 	if (integer_literal->suffix().empty()) {
-		return 8;
+		return Types::builtin_i32_id;
 	}
 
-	// FIXME: This is ugly as hell
-
 	if (integer_literal->suffix() == "u8") {
-		return 1;
+		return Types::builtin_u8_id;
 	}
 
 	if (integer_literal->suffix() == "u16") {
-		return 2;
+		return Types::builtin_u16_id;
 	}
 
 	if (integer_literal->suffix() == "u32") {
-		return 3;
+		return Types::builtin_u32_id;
 	}
 
 	if (integer_literal->suffix() == "u64") {
-		return 4;
+		return Types::builtin_u64_id;
 	}
 
 	if (integer_literal->suffix() == "usize") {
-		return 5;
+		return Types::builtin_usize_id;
 	}
 
 	if (integer_literal->suffix() == "i8") {
-		return 6;
+		return Types::builtin_i8_id;
 	}
 
 	if (integer_literal->suffix() == "i16") {
-		return 7;
+		return Types::builtin_i16_id;
 	}
 
 	if (integer_literal->suffix() == "i32") {
-		return 8;
+		return Types::builtin_i32_id;
 	}
 
 	if (integer_literal->suffix() == "i64") {
-		return 9;
+		return Types::builtin_i64_id;
 	}
 
 	if (integer_literal->suffix() == "isize") {
-		return 10;
+		return Types::builtin_isize_id;
 	}
 
 	return Error { "Invalid suffix for integer literal", integer_literal->span() };
@@ -382,12 +378,11 @@ Result<Types::Id, Error> Typechecker::check_binary_expression(std::shared_ptr<AS
 	case AST::BinaryOperator::LogicalAnd:
 	case AST::BinaryOperator::LogicalOr:
 		{
-			// FIXME: Better encode this value, now `bool` = 11
-			if (lhs_type_id != 11) {
+			if (!m_types[lhs_type_id].is<Types::Bool>()) {
 				return Error { "Logical operator requires boolean type", binary_expression->lhs()->span() };
 			}
 
-			if (rhs_type_id != 11) {
+			if (!m_types[rhs_type_id].is<Types::Bool>()) {
 				return Error { "Logical operator requires boolean type", binary_expression->rhs()->span() };
 			}
 
@@ -420,14 +415,14 @@ Result<Types::Id, Error> Typechecker::check_binary_expression(std::shared_ptr<AS
 		{
 			if (m_types[lhs_type_id].is_integer() && m_types[rhs_type_id].is_integer()) {
 				if ((m_types[lhs_type_id].is_signed() && m_types[rhs_type_id].is_signed()) || (!m_types[lhs_type_id].is_signed() && !m_types[rhs_type_id].is_signed())) {
-					return 11; // FIXME: Better encode this value, now `bool` = 11
+					return Types::builtin_bool_id;
 				}
 
 				return Error { "Comparison between types of different signedness", binary_expression->span() };
 			}
 
 			if (m_types[lhs_type_id].is<Types::Char>() && m_types[rhs_type_id].is<Types::Char>()) {
-				return 11; // FIXME: Better encode this value, now `bool` = 11
+				return Types::builtin_bool_id;
 			}
 
 			return Error { "Incompatible types for binary operation", binary_expression->span() };
@@ -459,7 +454,7 @@ Result<Types::Id, Error> Typechecker::check_unary_expression(std::shared_ptr<AST
 				return Error { "Unary operator requires boolean type", unary_expression->operand()->span() };
 			}
 
-			return 11; // FIXME: Better encode this value, now `bool` = 11
+			return Types::builtin_bool_id;
 		}
 	}
 
@@ -502,11 +497,6 @@ Result<Types::Id, Error> Typechecker::check_assignment_expression(std::shared_pt
 			if (!m_types[lhs_type_id].is_integer() || !m_types[rhs_type_id].is_integer()) {
 				return Error { "Incompatible types for assignment", assignment_expression->span() };
 			}
-
-			// FIXME: Refactor this
-			// if (!find_common_type_for_integers(lhs_type_id, rhs_type_id)) {
-			// 	return Error { "Incompatible types for assignment", assignment_expression->span() };
-			// }
 
 			return lhs_type_id;
 		}
@@ -633,8 +623,7 @@ Result<Types::Id, Error> Typechecker::check_function_call_expression(std::shared
 	for (std::size_t i = 0; i < arguments.size(); ++i) {
 		auto parameter_type_id = parameters[i].type_id;
 		auto argument_type_id = TRY(check_expression(arguments[i].value));
-		// FIXME: Check if they can be implictly converted
-		if (parameter_type_id != argument_type_id) {
+		if (!are_types_compatible_for_assignment(parameter_type_id, argument_type_id)) {
 			return Error { "Function call has wrong parameter type", arguments[i].value->span() };
 		}
 
@@ -649,7 +638,7 @@ Result<Types::Id, Error> Typechecker::check_function_call_expression(std::shared
 Result<Types::Id, Error> Typechecker::check_array_expression(std::shared_ptr<AST::ArrayExpression const> array_expression) {
 	assert(m_current_function && m_current_block);
 
-	// FIXME: Should properly typecheck empty array expressions
+	// FIXME: Handle empty array expressions
 
 	auto array_elements = array_expression->elements();
 	Types::Id first_element_type_id = 0;
