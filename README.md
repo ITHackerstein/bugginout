@@ -205,6 +205,7 @@ VARIABLE_DECLARATION_STATEMENT:
   (
     "var" IDENTIFIER ":" TYPE |
     "var" IDENTIFIER "=" EXPRESSION |
+		"mut" IDENTIFIER "=" EXPRESSION |
     "var" IDENTIFIER ":" TYPE "=" EXPRESSION |
   ) ";"
 ```
@@ -214,6 +215,11 @@ Variables are declared with the following syntax:
 var variable_name [: type] [= initial_value];
 ```
 If the type is not specified it will be infered from the initial value. Also, every variable is immutable by default.
+
+There is a special case when declaring a mutable variable without specifying its type that requires using `mut` instead of `var` to declare it:
+```
+mut variable_name = initial_value;
+```
 
 ### For statements
 
