@@ -42,9 +42,7 @@ private:
 	std::unordered_map<std::string_view, Variable> m_variables;
 	// NOTE: Not to be confused with the return type of a function,
 	//       it is the type of the value of the block
-	// FIXME: This is hardcoded as 0, but we should do some work in `Types.hpp`
-	//        to make it more meaningful, right now `void` is 0
-	std::size_t m_return_type_id { 0 };
+	std::size_t m_return_type_id { Types::builtin_void_id };
 	bool m_contains_return_statement { false };
 };
 
@@ -99,7 +97,6 @@ private:
 	Result<Types::Id, Error> check_update_expression(std::shared_ptr<AST::UpdateExpression const>);
 	Result<Types::Id, Error> check_pointer_dereference_expression(std::shared_ptr<AST::PointerDereferenceExpression const>);
 	Result<Types::Id, Error> check_address_of_expression(std::shared_ptr<AST::AddressOfExpression const>);
-	Result<Types::Id, Error> check_range_expression(std::shared_ptr<AST::RangeExpression const>);
 	Result<Types::Id, Error> check_if_expression(std::shared_ptr<AST::IfExpression const>);
 	Result<Types::Id, Error> check_function_call_expression(std::shared_ptr<AST::FunctionCallExpression const>);
 	Result<Types::Id, Error> check_array_expression(std::shared_ptr<AST::ArrayExpression const>);

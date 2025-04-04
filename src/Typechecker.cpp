@@ -1,6 +1,8 @@
 #include "Typechecker.hpp"
 #include "Types.hpp"
 
+#include <fmt/core.h>
+
 namespace bo {
 
 Result<void, Error> Block::define_variable(Variable variable) {
@@ -136,25 +138,25 @@ Result<Types::Id, Error> Typechecker::check_statement(std::shared_ptr<AST::State
 	if (statement->is_expression_statement()) {
 		auto expression_statement = std::static_pointer_cast<AST::ExpressionStatement const>(statement);
 		auto expression_type = TRY(check_expression(expression_statement->expression()));
-		return expression_statement->ends_with_semicolon() ? 0 : expression_type;
+		return expression_statement->ends_with_semicolon() ? Types::builtin_void_id : expression_type;
 	}
 
 	if (statement->is_variable_declaration()) {
 		auto variable_declaration_statement = std::static_pointer_cast<AST::VariableDeclarationStatement const>(statement);
 		TRY(check_variable_declaration_statement(variable_declaration_statement));
-		return 0;
+		return Types::builtin_void_id;
 	}
 
 	if (statement->is_for_statement()) {
 		auto for_statement = std::static_pointer_cast<AST::ForStatement const>(statement);
 		TRY(check_for_statement(for_statement));
-		return 0;
+		return Types::builtin_void_id;
 	}
 
 	if (statement->is_return_statement()) {
 		auto return_statement = std::static_pointer_cast<AST::ReturnStatement const>(statement);
 		TRY(check_return_statement(return_statement));
-		return 0;
+		return Types::builtin_void_id;
 	}
 
 	assert(false && "Statement not handled");
@@ -165,11 +167,11 @@ Result<void, Error> Typechecker::check_variable_declaration_statement(std::share
 
 	auto variable_name = variable_declaration_statement->identifier()->id();
 	auto variable_span = variable_declaration_statement->identifier()->span();
-	auto variable_type_id = variable_declaration_statement->type() ? TRY(check_type(variable_declaration_statement->type())) : 0;
+	auto variable_type_id = variable_declaration_statement->type() ? TRY(check_type(variable_declaration_statement->type())) : Types::builtin_void_id;
 
 	if (variable_declaration_statement->initializer()) {
 		auto expression_type_id = TRY(check_expression(variable_declaration_statement->initializer()));
-		if (variable_type_id == 0) {
+		if (variable_type_id == Types::builtin_void_id) {
 			variable_type_id = apply_mutability(expression_type_id, variable_declaration_statement->starts_with_mut());
 		} else if (!are_types_compatible_for_assignment(variable_type_id, expression_type_id)) {
 			return Error { "Variable type doesn't match expression type", variable_declaration_statement->span() };
@@ -206,20 +208,35 @@ Result<void, Error> Typechecker::check_for_statement(std::shared_ptr<AST::ForSta
 	}
 
 	if (for_statement->is_with_range()) {
-		// FIXME: Allow range expressions
 		auto for_with_range = std::static_pointer_cast<AST::ForWithRangeStatement const>(for_statement);
-		auto range_type_id = TRY(check_expression(for_with_range->range_expression()));
-		if (!m_types[range_type_id].is<Types::Array>() && !m_types[range_type_id].is<Types::Slice>()) {
-			return Error { "For range must be an array or a slice", for_with_range->range_expression()->span() };
+		auto range_expression = for_with_range->range_expression();
+
+		Types::Id range_variable_type_id = Types::builtin_void_id;
+		if (range_expression->is_range_expression()) {
+			auto actual_range_expression = std::static_pointer_cast<AST::RangeExpression const>(range_expression);
+			auto start_type_id = TRY(check_expression(actual_range_expression->start()));
+			auto end_type_id = TRY(check_expression(actual_range_expression->end()));
+
+			if (!m_types[start_type_id].is_integer() || !m_types[end_type_id].is_integer()) {
+				return Error { "Range start and end types must be integers", actual_range_expression->span() };
+			}
+
+			range_variable_type_id = start_type_id;
+		} else {
+			auto range_type_id = TRY(check_expression(for_with_range->range_expression()));
+			if (!m_types[range_type_id].is<Types::Array>() && !m_types[range_type_id].is<Types::Slice>()) {
+				return Error { "For range must be an array or a slice", for_with_range->range_expression()->span() };
+			}
+
+			range_variable_type_id = m_types[range_type_id].is<Types::Array>() ? m_types[range_type_id].as<Types::Array>().inner_type_id() : m_types[range_type_id].as<Types::Slice>().inner_type_id();
 		}
 
-		auto range_variable_type = m_types[range_type_id].is<Types::Array>() ? m_types[range_type_id].as<Types::Array>().inner_type_id() : m_types[range_type_id].as<Types::Slice>().inner_type_id();
 		auto range_variable_name = for_with_range->range_variable()->id();
 		auto range_variable_span = for_with_range->range_variable()->span();
 
 		auto old_current_block = *m_current_block;
 		m_current_block = create_block(old_current_block);
-		TRY(define_variable(Variable { range_variable_type, range_variable_name, range_variable_span }));
+		TRY(define_variable(Variable { range_variable_type_id, range_variable_name, range_variable_span }));
 		TRY(check_block_expression(for_with_range->body()));
 		m_current_block = old_current_block;
 		return {};
@@ -231,9 +248,16 @@ Result<void, Error> Typechecker::check_for_statement(std::shared_ptr<AST::ForSta
 Result<void, Error> Typechecker::check_return_statement(std::shared_ptr<AST::ReturnStatement const> return_statement) {
 	assert(m_current_function && m_current_block);
 
-	auto return_type_id = return_statement->expression() ? TRY(check_expression(return_statement->expression())) : 0;
+	auto return_type_id = return_statement->expression() ? TRY(check_expression(return_statement->expression())) : Types::builtin_void_id;
 	if (!are_types_compatible_for_assignment(m_functions[*m_current_function].return_type_id(), return_type_id)) {
 		return Error { "Incompatible return types", return_statement->span() };
+	}
+
+	auto block_id = m_current_block;
+	while (block_id) {
+		auto& block = m_blocks[*block_id];
+		block.contains_return_statement() = true;
+		block_id = block.parent();
 	}
 
 	return {};
@@ -277,7 +301,7 @@ Result<Types::Id, Error> Typechecker::check_expression(std::shared_ptr<AST::Expr
 	}
 
 	if (expression->is_range_expression()) {
-		return check_range_expression(std::static_pointer_cast<AST::RangeExpression const>(expression));
+		return Error { "Range expressions can be used only in a for-in loop", expression->span() };
 	}
 
 	if (expression->is_block_expression()) {
@@ -536,7 +560,7 @@ Result<Types::Id, Error> Typechecker::check_update_expression(std::shared_ptr<AS
 		return Error { "Update operator requires mutable type", update_expression->operand()->span() };
 	}
 
-	return 0;
+	return Types::builtin_void_id;
 }
 
 Result<Types::Id, Error> Typechecker::check_pointer_dereference_expression(std::shared_ptr<AST::PointerDereferenceExpression const> pointer_dereference_expression) {
@@ -556,12 +580,6 @@ Result<Types::Id, Error> Typechecker::check_address_of_expression(std::shared_pt
 	return find_or_add_type(Types::Type::pointer(Types::Pointer::Kind::Strong, operand_type_id, false));
 }
 
-Result<Types::Id, Error> Typechecker::check_range_expression(std::shared_ptr<AST::RangeExpression const>) {
-	assert(m_current_function && m_current_block);
-	// FIXME: Implement this
-	return 0;
-}
-
 Result<void, Error> Typechecker::check_block_expression(std::shared_ptr<AST::BlockExpression const> block_expression) {
 	assert(m_current_function && m_current_block);
 
@@ -570,11 +588,7 @@ Result<void, Error> Typechecker::check_block_expression(std::shared_ptr<AST::Blo
 	}
 
 	for (std::size_t i = 0; i < block_expression->statements().size() - 1; ++i) {
-		auto statement = block_expression->statements()[i];
-		if (statement->is_return_statement()) {
-			m_blocks[*m_current_block].contains_return_statement() = true;
-		}
-		TRY(check_statement(statement));
+		TRY(check_statement(block_expression->statements()[i]));
 	}
 
 	auto last_statement = block_expression->statements().back();
@@ -641,7 +655,7 @@ Result<Types::Id, Error> Typechecker::check_array_expression(std::shared_ptr<AST
 	// FIXME: Handle empty array expressions
 
 	auto array_elements = array_expression->elements();
-	Types::Id first_element_type_id = 0;
+	Types::Id first_element_type_id = Types::builtin_void_id;
 	if (!array_elements.empty()) {
 		first_element_type_id = TRY(check_expression(array_elements[0]));
 		for (std::size_t i = 1; i < array_elements.size(); ++i) {

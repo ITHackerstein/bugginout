@@ -7,16 +7,14 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn find(haystack: []i32, needle: i32, result: ^mut isize): void {
-	mut i = 0_isize;
-	for (value in haystack) {
-		if (value == needle) {
-			@result = i;
-			return;
+fn find(haystack: []i32, needle: i32): isize {
+	for (i in 0_isize..<100_isize) {
+		if (haystack[i] == needle) {
+			return i;
 		}
-		++i;
 	}
-	@result = -1;
+
+	return -1;
 }
 )"sv;
 
