@@ -17,19 +17,20 @@ namespace Types {
 
 using Id = std::size_t;
 
-#define _BO_ENUMERATE_BUILTIN_TYPES       \
-	BO_ENUMERATE_BUILTIN_TYPE(Void, void)   \
-	BO_ENUMERATE_BUILTIN_TYPE(U8, u8)       \
-	BO_ENUMERATE_BUILTIN_TYPE(U16, u16)     \
-	BO_ENUMERATE_BUILTIN_TYPE(U32, u32)     \
-	BO_ENUMERATE_BUILTIN_TYPE(U64, u64)     \
-	BO_ENUMERATE_BUILTIN_TYPE(USize, usize) \
-	BO_ENUMERATE_BUILTIN_TYPE(I8, i8)       \
-	BO_ENUMERATE_BUILTIN_TYPE(I16, i16)     \
-	BO_ENUMERATE_BUILTIN_TYPE(I32, i32)     \
-	BO_ENUMERATE_BUILTIN_TYPE(I64, i64)     \
-	BO_ENUMERATE_BUILTIN_TYPE(ISize, isize) \
-	BO_ENUMERATE_BUILTIN_TYPE(Bool, bool)   \
+#define _BO_ENUMERATE_BUILTIN_TYPES           \
+	BO_ENUMERATE_BUILTIN_TYPE(Unknown, unknown) \
+	BO_ENUMERATE_BUILTIN_TYPE(Void, void)       \
+	BO_ENUMERATE_BUILTIN_TYPE(U8, u8)           \
+	BO_ENUMERATE_BUILTIN_TYPE(U16, u16)         \
+	BO_ENUMERATE_BUILTIN_TYPE(U32, u32)         \
+	BO_ENUMERATE_BUILTIN_TYPE(U64, u64)         \
+	BO_ENUMERATE_BUILTIN_TYPE(USize, usize)     \
+	BO_ENUMERATE_BUILTIN_TYPE(I8, i8)           \
+	BO_ENUMERATE_BUILTIN_TYPE(I16, i16)         \
+	BO_ENUMERATE_BUILTIN_TYPE(I32, i32)         \
+	BO_ENUMERATE_BUILTIN_TYPE(I64, i64)         \
+	BO_ENUMERATE_BUILTIN_TYPE(ISize, isize)     \
+	BO_ENUMERATE_BUILTIN_TYPE(Bool, bool)       \
 	BO_ENUMERATE_BUILTIN_TYPE(Char, char)
 
 #define BO_ENUMERATE_BUILTIN_TYPE(klass_name, type_name)       \
@@ -137,6 +138,7 @@ public:
 	bool is_builtin() const {
 		// NOTE: Not using the macro here, because clang-format sucks :)
 		auto visitor = overload {
+			[](Unknown const&) { return true; },
 			[](Void const&) { return true; },
 			[](U8 const&) { return true; },
 			[](U16 const&) { return true; },

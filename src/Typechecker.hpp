@@ -88,7 +88,7 @@ private:
 	Result<void, Error> check_variable_declaration_statement(std::shared_ptr<AST::VariableDeclarationStatement const>);
 	Result<void, Error> check_for_statement(std::shared_ptr<AST::ForStatement const>);
 	Result<void, Error> check_return_statement(std::shared_ptr<AST::ReturnStatement const>);
-	Result<Types::Id, Error> check_expression(std::shared_ptr<AST::Expression const>);
+	Result<Types::Id, Error> check_expression(std::shared_ptr<AST::Expression const>, Types::Id type_hint = Types::builtin_unknown_id);
 	Result<Types::Id, Error> check_integer_literal(std::shared_ptr<AST::IntegerLiteral const>);
 	Result<Types::Id, Error> check_identifier(std::shared_ptr<AST::Identifier const>);
 	Result<Types::Id, Error> check_binary_expression(std::shared_ptr<AST::BinaryExpression const>);
@@ -99,11 +99,10 @@ private:
 	Result<Types::Id, Error> check_address_of_expression(std::shared_ptr<AST::AddressOfExpression const>);
 	Result<Types::Id, Error> check_if_expression(std::shared_ptr<AST::IfExpression const>);
 	Result<Types::Id, Error> check_function_call_expression(std::shared_ptr<AST::FunctionCallExpression const>);
-	Result<Types::Id, Error> check_array_expression(std::shared_ptr<AST::ArrayExpression const>);
+	Result<Types::Id, Error> check_array_expression(std::shared_ptr<AST::ArrayExpression const>, Types::Id type_hint = Types::builtin_unknown_id);
 	Result<Types::Id, Error> check_array_subscript_expression(std::shared_ptr<AST::ArraySubscriptExpression const>);
 
 	bool are_types_compatible_for_assignment(Types::Id lhs, Types::Id rhs) const;
-	Types::Id find_common_type_for_integers(Types::Id, Types::Id) const;
 
 	std::size_t create_block(std::optional<size_t> parent = {});
 	std::size_t define_function(Function);

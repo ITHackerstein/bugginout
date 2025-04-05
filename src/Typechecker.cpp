@@ -91,6 +91,11 @@ Result<Types::Id, Error> Typechecker::check_type(std::shared_ptr<AST::Type const
 		return find_or_add_type(Types::Type::slice(inner, type->is_mutable()));
 	}
 
+	// NOTE: This skips the check for the `unknown` which is used only internally for inference
+	if (type->name()->id() == "unknown") {
+		return Error { "Unknown type", type->span() };
+	}
+
 #define BO_ENUMERATE_BUILTIN_TYPE(klass_name, type_name)                           \
 	if (type->name()->id() == #type_name##sv) {                                      \
 		return find_or_add_type(Types::Type::builtin_##type_name(type->is_mutable())); \
@@ -114,6 +119,10 @@ Result<void, Error> Typechecker::check_function_declaration(std::shared_ptr<AST:
 	for (auto parameter : function_declaration->parameters()) {
 		auto parameter_name = parameter.name->id();
 		auto parameter_type_id = TRY(check_type(parameter.type));
+		if (m_types[parameter_type_id].is<Types::Void>()) {
+			return Error { "Void type cannot be used as a parameter", parameter.type->span() };
+		}
+
 		auto parameter_span = parameter.name->span();
 		function_parameters.emplace_back(parameter_type_id, parameter_name, parameter.is_anonymous, parameter_span);
 	}
@@ -137,8 +146,8 @@ Result<void, Error> Typechecker::check_function_declaration(std::shared_ptr<AST:
 Result<Types::Id, Error> Typechecker::check_statement(std::shared_ptr<AST::Statement const> statement) {
 	if (statement->is_expression_statement()) {
 		auto expression_statement = std::static_pointer_cast<AST::ExpressionStatement const>(statement);
-		auto expression_type = TRY(check_expression(expression_statement->expression()));
-		return expression_statement->ends_with_semicolon() ? Types::builtin_void_id : expression_type;
+		auto expression_type_id = TRY(check_expression(expression_statement->expression()));
+		return expression_statement->ends_with_semicolon() ? Types::builtin_void_id : expression_type_id;
 	}
 
 	if (statement->is_variable_declaration()) {
@@ -167,11 +176,18 @@ Result<void, Error> Typechecker::check_variable_declaration_statement(std::share
 
 	auto variable_name = variable_declaration_statement->identifier()->id();
 	auto variable_span = variable_declaration_statement->identifier()->span();
-	auto variable_type_id = variable_declaration_statement->type() ? TRY(check_type(variable_declaration_statement->type())) : Types::builtin_void_id;
+	auto variable_type_id = variable_declaration_statement->type() ? TRY(check_type(variable_declaration_statement->type())) : Types::builtin_unknown_id;
+	if (m_types[variable_type_id].is<Types::Void>()) {
+		return Error { "Void type cannot be used as variable type", variable_declaration_statement->type()->span() };
+	}
 
 	if (variable_declaration_statement->initializer()) {
-		auto expression_type_id = TRY(check_expression(variable_declaration_statement->initializer()));
-		if (variable_type_id == Types::builtin_void_id) {
+		auto expression_type_id = TRY(check_expression(variable_declaration_statement->initializer(), variable_type_id));
+		if (expression_type_id == Types::builtin_void_id) {
+			return Error { "Void type cannot be used as initializer", variable_declaration_statement->initializer()->span() };
+		}
+
+		if (variable_type_id == Types::builtin_unknown_id) {
 			variable_type_id = apply_mutability(expression_type_id, variable_declaration_statement->starts_with_mut());
 		} else if (!are_types_compatible_for_assignment(variable_type_id, expression_type_id)) {
 			return Error { "Variable type doesn't match expression type", variable_declaration_statement->span() };
@@ -263,9 +279,9 @@ Result<void, Error> Typechecker::check_return_statement(std::shared_ptr<AST::Ret
 	return {};
 }
 
-Result<Types::Id, Error> Typechecker::check_expression(std::shared_ptr<AST::Expression const> expression) {
+Result<Types::Id, Error> Typechecker::check_expression(std::shared_ptr<AST::Expression const> expression, [[maybe_unused]] Types::Id type_hint) {
 	if (expression->is_parenthesized_expression()) {
-		return check_expression(std::static_pointer_cast<AST::ParenthesizedExpression const>(expression)->expression());
+		return check_expression(std::static_pointer_cast<AST::ParenthesizedExpression const>(expression)->expression(), type_hint);
 	}
 
 	if (expression->is_integer_literal()) {
@@ -323,7 +339,7 @@ Result<Types::Id, Error> Typechecker::check_expression(std::shared_ptr<AST::Expr
 	}
 
 	if (expression->is_array_expression()) {
-		return check_array_expression(std::static_pointer_cast<AST::ArrayExpression const>(expression));
+		return check_array_expression(std::static_pointer_cast<AST::ArrayExpression const>(expression), type_hint);
 	}
 
 	if (expression->is_array_subscription_expression()) {
@@ -398,19 +414,19 @@ Result<Types::Id, Error> Typechecker::check_binary_expression(std::shared_ptr<AS
 	auto lhs_type_id = TRY(check_expression(binary_expression->lhs()));
 	auto rhs_type_id = TRY(check_expression(binary_expression->rhs()));
 
+	if (m_types[lhs_type_id].is<Types::Void>() || m_types[rhs_type_id].is<Types::Void>()) {
+		return Error { "Void type cannot be used in binary expression", binary_expression->span() };
+	}
+
 	switch (binary_expression->op()) {
 	case AST::BinaryOperator::LogicalAnd:
 	case AST::BinaryOperator::LogicalOr:
 		{
-			if (!m_types[lhs_type_id].is<Types::Bool>()) {
+			if (!m_types[lhs_type_id].is<Types::Bool>() || !m_types[rhs_type_id].is<Types::Bool>()) {
 				return Error { "Logical operator requires boolean type", binary_expression->lhs()->span() };
 			}
 
-			if (!m_types[rhs_type_id].is<Types::Bool>()) {
-				return Error { "Logical operator requires boolean type", binary_expression->rhs()->span() };
-			}
-
-			return 11;
+			return Types::builtin_bool_id;
 		}
 	case AST::BinaryOperator::BitwiseLeftShift:
 	case AST::BinaryOperator::BitwiseRightShift:
@@ -429,13 +445,25 @@ Result<Types::Id, Error> Typechecker::check_binary_expression(std::shared_ptr<AS
 	case AST::BinaryOperator::BitwiseAnd:
 	case AST::BinaryOperator::BitwiseXor:
 	case AST::BinaryOperator::BitwiseOr:
-		return find_common_type_for_integers(lhs_type_id, rhs_type_id);
+		{
+			if (!m_types[lhs_type_id].is_integer() || !m_types[rhs_type_id].is_integer()) {
+				return Error { "Incompatible types for binary operation", binary_expression->span() };
+			}
+
+			if (!((m_types[lhs_type_id].is_signed() && m_types[rhs_type_id].is_signed()) || (!m_types[lhs_type_id].is_signed() && !m_types[rhs_type_id].is_signed()))) {
+				return Error { "Incompatible types for binary operation", binary_expression->span() };
+			}
+
+			if (m_types[lhs_type_id].size() != m_types[rhs_type_id].size()) {
+				return Error { "Incompatible types for binary operation", binary_expression->span() };
+			}
+
+			return lhs_type_id;
+		}
 	case AST::BinaryOperator::LessThan:
 	case AST::BinaryOperator::GreaterThan:
 	case AST::BinaryOperator::LessThanOrEqualTo:
 	case AST::BinaryOperator::GreaterThanOrEqualTo:
-	case AST::BinaryOperator::EqualTo:
-	case AST::BinaryOperator::NotEqualTo:
 		{
 			if (m_types[lhs_type_id].is_integer() && m_types[rhs_type_id].is_integer()) {
 				if ((m_types[lhs_type_id].is_signed() && m_types[rhs_type_id].is_signed()) || (!m_types[lhs_type_id].is_signed() && !m_types[rhs_type_id].is_signed())) {
@@ -451,6 +479,19 @@ Result<Types::Id, Error> Typechecker::check_binary_expression(std::shared_ptr<AS
 
 			return Error { "Incompatible types for binary operation", binary_expression->span() };
 		}
+	case AST::BinaryOperator::EqualTo:
+	case AST::BinaryOperator::NotEqualTo:
+		{
+			if (m_types[lhs_type_id].is_integer() && m_types[rhs_type_id].is_integer()) {
+				if ((m_types[lhs_type_id].is_signed() && m_types[rhs_type_id].is_signed()) || (!m_types[lhs_type_id].is_signed() && !m_types[rhs_type_id].is_signed())) {
+					return Types::builtin_bool_id;
+				}
+
+				return Error { "Comparison between types of different signedness", binary_expression->span() };
+			}
+
+			return Types::builtin_bool_id;
+		}
 	}
 
 	assert(false && "Binary expression not handled");
@@ -460,6 +501,10 @@ Result<Types::Id, Error> Typechecker::check_unary_expression(std::shared_ptr<AST
 	assert(m_current_function && m_current_block);
 
 	auto operand_type_id = TRY(check_expression(unary_expression->operand()));
+
+	if (m_types[operand_type_id].is<Types::Void>()) {
+		return Error { "Void type cannot be used in unary expression", unary_expression->span() };
+	}
 
 	switch (unary_expression->op()) {
 	case AST::UnaryOperator::Positive:
@@ -491,6 +536,10 @@ Result<Types::Id, Error> Typechecker::check_assignment_expression(std::shared_pt
 	auto lhs_type_id = TRY(check_expression(assignment_expression->lhs()));
 	auto rhs_type_id = TRY(check_expression(assignment_expression->rhs()));
 
+	if (m_types[lhs_type_id].is<Types::Void>() || m_types[rhs_type_id].is<Types::Void>()) {
+		return Error { "Void type cannot be used in assignment expression", assignment_expression->span() };
+	}
+
 	if (!m_types[lhs_type_id].is_mutable()) {
 		return Error { "Cannot assign to immutable value", assignment_expression->lhs()->span() };
 	}
@@ -514,7 +563,15 @@ Result<Types::Id, Error> Typechecker::check_assignment_expression(std::shared_pt
 	case AST::AssignmentOperator::BitwiseOrAssignment:
 		{
 			if (!m_types[lhs_type_id].is_integer() || !m_types[rhs_type_id].is_integer()) {
-				return Error { "Incompatible types for assignment", assignment_expression->span() };
+				return Error { "Incompatible types for binary operation", assignment_expression->span() };
+			}
+
+			if (!((m_types[lhs_type_id].is_signed() && m_types[rhs_type_id].is_signed()) || (!m_types[lhs_type_id].is_signed() && !m_types[rhs_type_id].is_signed()))) {
+				return Error { "Incompatible types for binary operation", assignment_expression->span() };
+			}
+
+			if (m_types[lhs_type_id].size() != m_types[rhs_type_id].size()) {
+				return Error { "Incompatible types for binary operation", assignment_expression->span() };
 			}
 
 			return lhs_type_id;
@@ -547,12 +604,16 @@ Result<Types::Id, Error> Typechecker::check_update_expression(std::shared_ptr<AS
 
 	auto operand_type_id = TRY(check_expression(update_expression->operand()));
 
-	if (!m_types[operand_type_id].is_integer()) {
-		return Error { "Update operator requires integer type", update_expression->operand()->span() };
+	if (m_types[operand_type_id].is<Types::Void>()) {
+		return Error { "Void type cannot be used in update expression", update_expression->operand()->span() };
 	}
 
 	if (!m_types[operand_type_id].is_mutable()) {
 		return Error { "Update operator requires mutable type", update_expression->operand()->span() };
+	}
+
+	if (!m_types[operand_type_id].is_integer()) {
+		return Error { "Update operator requires integer type", update_expression->operand()->span() };
 	}
 
 	return Types::builtin_void_id;
@@ -572,6 +633,11 @@ Result<Types::Id, Error> Typechecker::check_pointer_dereference_expression(std::
 
 Result<Types::Id, Error> Typechecker::check_address_of_expression(std::shared_ptr<AST::AddressOfExpression const> address_of_expression) {
 	auto operand_type_id = TRY(check_expression(address_of_expression->operand()));
+
+	if (m_types[operand_type_id].is<Types::Void>()) {
+		return Error { "Void type cannot be used in address-of expression", address_of_expression->operand()->span() };
+	}
+
 	return find_or_add_type(Types::Type::pointer(Types::Pointer::Kind::Strong, operand_type_id, false));
 }
 
@@ -632,6 +698,11 @@ Result<Types::Id, Error> Typechecker::check_function_call_expression(std::shared
 	for (std::size_t i = 0; i < arguments.size(); ++i) {
 		auto parameter_type_id = parameters[i].type_id;
 		auto argument_type_id = TRY(check_expression(arguments[i].value));
+
+		if (m_types[argument_type_id].is<Types::Void>()) {
+			return Error { "Void type cannot be used as an argument", arguments[i].value->span() };
+		}
+
 		if (!are_types_compatible_for_assignment(parameter_type_id, argument_type_id)) {
 			return Error { "Function call has wrong parameter type", arguments[i].value->span() };
 		}
@@ -644,24 +715,52 @@ Result<Types::Id, Error> Typechecker::check_function_call_expression(std::shared
 	return function_it->return_type_id();
 }
 
-Result<Types::Id, Error> Typechecker::check_array_expression(std::shared_ptr<AST::ArrayExpression const> array_expression) {
+Result<Types::Id, Error> Typechecker::check_array_expression(std::shared_ptr<AST::ArrayExpression const> array_expression, [[maybe_unused]] Types::Id type_hint) {
 	assert(m_current_function && m_current_block);
 
-	// FIXME: Handle empty array expressions
+	Types::Id expected_array_inner_type_id = Types::builtin_unknown_id;
+	if (type_hint != Types::builtin_unknown_id) {
+		if (!m_types[type_hint].is<Types::Array>()) {
+			return Error { "Expected an array here", array_expression->span() };
+		}
 
-	auto array_elements = array_expression->elements();
-	Types::Id first_element_type_id = Types::builtin_void_id;
-	if (!array_elements.empty()) {
-		first_element_type_id = TRY(check_expression(array_elements[0]));
-		for (std::size_t i = 1; i < array_elements.size(); ++i) {
-			auto element_type_id = TRY(check_expression(array_elements[i]));
-			if (first_element_type_id != element_type_id) {
-				return Error { "Array elements must have the same type", array_expression->span() };
-			}
+		auto expected_size = m_types[type_hint].as<Types::Array>().size();
+		auto actual_size = array_expression->elements().size();
+		if (expected_size != actual_size) {
+			return Error { fmt::format("Expected an array of size {} here, but got {}", expected_size, actual_size), array_expression->span() };
+		}
+
+		expected_array_inner_type_id = m_types[type_hint].as<Types::Array>().inner_type_id();
+	}
+
+	Types::Id array_inner_type_id = Types::builtin_unknown_id;
+	for (auto element : array_expression->elements()) {
+		auto element_type_id = TRY(check_expression(element));
+		if (m_types[element_type_id].is<Types::Void>()) {
+			return Error { "Void type cannot be used as array element", element->span() };
+		}
+
+		if (array_inner_type_id == Types::builtin_unknown_id) {
+			array_inner_type_id = element_type_id;
+		} else if (array_inner_type_id != element_type_id) {
+			return Error { "Array elements must have the same type", array_expression->span() };
 		}
 	}
 
-	return find_or_add_type(Types::Type::array(array_elements.size(), first_element_type_id, false));
+	if (expected_array_inner_type_id == Types::builtin_unknown_id) {
+		if (array_inner_type_id == Types::builtin_unknown_id) {
+			return Error { "Could not infer array expression type", array_expression->span() };
+		}
+
+		return find_or_add_type(Types::Type::array(array_expression->elements().size(), array_inner_type_id, false));
+	}
+
+	if (expected_array_inner_type_id != array_inner_type_id) {
+		// FIXME: We should add a way to print out types
+		return Error { "Expected array of type {{}}, but got {{}}", array_expression->span() };
+	}
+
+	return find_or_add_type(Types::Type::array(array_expression->elements().size(), array_inner_type_id, false));
 }
 
 Result<Types::Id, Error> Typechecker::check_array_subscript_expression(std::shared_ptr<AST::ArraySubscriptExpression const> array_subscript_expression) {
@@ -670,15 +769,19 @@ Result<Types::Id, Error> Typechecker::check_array_subscript_expression(std::shar
 	auto array_type_id = TRY(check_expression(array_subscript_expression->array()));
 	auto index_type_id = TRY(check_expression(array_subscript_expression->index()));
 
-	if (!m_types[array_type_id].is<Types::Array>() && !m_types[array_type_id].is<Types::Slice>()) {
-		return Error { "Array subscript requires array or slice type", array_subscript_expression->array()->span() };
-	}
-
 	if (!m_types[index_type_id].is_integer()) {
 		return Error { "Array subscript requires integer type", array_subscript_expression->index()->span() };
 	}
 
-	return m_types[array_type_id].is<Types::Array>() ? m_types[array_type_id].as<Types::Array>().inner_type_id() : m_types[array_type_id].as<Types::Slice>().inner_type_id();
+	if (m_types[array_type_id].is<Types::Array>()) {
+		return m_types[array_type_id].as<Types::Array>().inner_type_id();
+	}
+
+	if (m_types[array_type_id].is<Types::Slice>()) {
+		return m_types[array_type_id].as<Types::Slice>().inner_type_id();
+	}
+
+	return Error { "Array subscript requires array or slice type", array_subscript_expression->array()->span() };
 }
 
 bool Typechecker::are_types_compatible_for_assignment(Types::Id lhs, Types::Id rhs) const {
@@ -686,8 +789,14 @@ bool Typechecker::are_types_compatible_for_assignment(Types::Id lhs, Types::Id r
 		return true;
 	}
 
-	if (m_types[lhs].is_integer() && m_types[lhs].is_integer()) {
-		return true;
+	if (m_types[lhs].is_integer() && m_types[rhs].is_integer()) {
+		if ((!m_types[lhs].is_signed() && !m_types[rhs].is_signed()) || (m_types[lhs].is_signed() && m_types[rhs].is_signed())) {
+			return m_types[lhs].size() >= m_types[rhs].size();
+		} else if (m_types[lhs].is_signed()) {
+			return m_types[lhs].size() > m_types[rhs].size();
+		}
+
+		return false;
 	}
 
 	if (m_types[lhs].is<Types::Char>() && m_types[rhs].is<Types::Char>()) {
@@ -708,6 +817,7 @@ bool Typechecker::are_types_compatible_for_assignment(Types::Id lhs, Types::Id r
 
 		auto lhs_inner_type_id = lhs_pointer.inner_type_id();
 		auto rhs_inner_type_id = rhs_pointer.inner_type_id();
+
 		return are_types_compatible_for_assignment(lhs_inner_type_id, rhs_inner_type_id);
 	}
 
@@ -736,32 +846,6 @@ bool Typechecker::are_types_compatible_for_assignment(Types::Id lhs, Types::Id r
 	}
 
 	return false;
-}
-
-Types::Id Typechecker::find_common_type_for_integers(Types::Id lhs, Types::Id rhs) const {
-	assert(m_types[lhs].is_integer() && m_types[rhs].is_integer());
-
-	if (lhs == rhs) {
-		return lhs;
-	}
-
-	if ((m_types[lhs].is_signed() && m_types[rhs].is_signed()) || (!m_types[lhs].is_signed() && !m_types[rhs].is_signed())) {
-		if (m_types[rhs].size() < m_types[lhs].size()) {
-			return lhs;
-		}
-
-		return rhs;
-	}
-
-	if (m_types[lhs].is_signed()) {
-		std::swap(lhs, rhs);
-	}
-
-	if (m_types[rhs].size() <= m_types[lhs].size()) {
-		return lhs;
-	}
-
-	return rhs;
 }
 
 std::size_t Typechecker::create_block(std::optional<size_t> parent) {
