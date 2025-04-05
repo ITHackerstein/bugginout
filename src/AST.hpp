@@ -448,19 +448,19 @@ private:
 
 class VariableDeclarationStatement : public Statement {
 public:
-	explicit VariableDeclarationStatement(bool starts_with_mut, std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> initializer, Span span)
-	  : Statement(span), m_starts_with_mut(starts_with_mut), m_identifier(std::move(identifier)), m_type(std::move(type)), m_initializer(std::move(initializer)) {}
+	explicit VariableDeclarationStatement(bool is_mutable, std::shared_ptr<Identifier const> identifier, std::shared_ptr<Type const> type, std::shared_ptr<Expression const> initializer, Span span)
+	  : Statement(span), m_is_mutable(is_mutable), m_identifier(std::move(identifier)), m_type(std::move(type)), m_initializer(std::move(initializer)) {}
 
 	virtual void dump() const override;
 	virtual bool is_variable_declaration() const override { return true; }
 
-	bool starts_with_mut() const { return m_starts_with_mut; }
+	bool is_mutable() const { return m_is_mutable; }
 	std::shared_ptr<Identifier const> identifier() const { return m_identifier; }
 	std::shared_ptr<Type const> type() const { return m_type; }
 	std::shared_ptr<Expression const> initializer() const { return m_initializer; }
 
 private:
-	bool m_starts_with_mut;
+	bool m_is_mutable;
 	std::shared_ptr<Identifier const> m_identifier;
 	std::shared_ptr<Type const> m_type;
 	std::shared_ptr<Expression const> m_initializer;

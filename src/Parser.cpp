@@ -523,7 +523,7 @@ Result<std::shared_ptr<AST::ForStatement const>, Error> Parser::parse_for_statem
 	return std::static_pointer_cast<AST::ForStatement const>(std::make_shared<AST::InfiniteForStatement const>(std::move(body), span));
 }
 
-Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
+Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type(bool allow_top_level_mut) {
 	auto span = m_current_token.span();
 	std::shared_ptr<AST::Type const> inner_type = nullptr;
 	std::shared_ptr<AST::IntegerLiteral const> array_size = nullptr;
@@ -531,6 +531,10 @@ Result<std::shared_ptr<AST::Type const>, Error> Parser::parse_type() {
 	int flags = 0;
 
 	if (m_current_token.type() == Token::Type::KW_mut) {
+		if (!allow_top_level_mut) {
+			return Error { "'mut' is not allowed here", m_current_token.span() };
+		}
+
 		span = Span::merge(span, m_current_token.span());
 		TRY(consume());
 		flags |= AST::PF_IsMutable;
@@ -647,7 +651,7 @@ Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::
 	auto function_name = TRY(parse_identifier());
 	auto function_parameters = TRY(parse_function_parameters());
 	TRY(consume(Token::Type::Colon));
-	auto function_return_type = TRY(parse_type());
+	auto function_return_type = TRY(parse_type(false));
 	auto function_body = TRY(parse_block_expression());
 
 	span = Span::merge(span, m_current_token.span());
@@ -658,10 +662,10 @@ Result<std::shared_ptr<AST::FunctionDeclarationStatement const>, Error> Parser::
 Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::parse_variable_declaration_statement() {
 	auto span = m_current_token.span();
 
-	bool starts_with_mut = false;
+	bool is_mutable = false;
 	if (m_current_token.type() == Token::Type::KW_mut) {
 		TRY(consume());
-		starts_with_mut = true;
+		is_mutable = true;
 	} else {
 		TRY(consume(Token::Type::KW_var));
 	}
@@ -674,12 +678,8 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 		TRY(consume());
 		initializer = TRY(parse_expression());
 	} else if (m_current_token.type() == Token::Type::Colon) {
-		if (starts_with_mut) {
-			return Error { "Cannot use 'mut' with type annotations!", m_current_token.span() };
-		}
-
 		TRY(consume());
-		type = TRY(parse_type());
+		type = TRY(parse_type(false));
 
 		if (m_current_token.type() == Token::Type::Equals) {
 			TRY(consume());
@@ -691,7 +691,7 @@ Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> Parser::
 
 	span = Span::merge(span, m_current_token.span());
 	TRY(consume(Token::Type::Semicolon));
-	return std::make_shared<AST::VariableDeclarationStatement const>(starts_with_mut, std::move(identifier), std::move(type), std::move(initializer), span);
+	return std::make_shared<AST::VariableDeclarationStatement const>(is_mutable, std::move(identifier), std::move(type), std::move(initializer), span);
 }
 
 Result<std::shared_ptr<AST::ReturnStatement const>, Error> Parser::parse_return_statement() {

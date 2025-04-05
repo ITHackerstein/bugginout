@@ -8,8 +8,7 @@
 Result<void, bo::Error> my_main() {
 	auto source = R"(
 fn main(): void {
-	mut a = 1_i32;
-	a += 2_u32;
+	var a: i32 = 1_i32;
 }
 )"sv;
 

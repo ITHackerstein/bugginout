@@ -176,9 +176,14 @@ Result<void, Error> Typechecker::check_variable_declaration_statement(std::share
 
 	auto variable_name = variable_declaration_statement->identifier()->id();
 	auto variable_span = variable_declaration_statement->identifier()->span();
-	auto variable_type_id = variable_declaration_statement->type() ? TRY(check_type(variable_declaration_statement->type())) : Types::builtin_unknown_id;
-	if (m_types[variable_type_id].is<Types::Void>()) {
-		return Error { "Void type cannot be used as variable type", variable_declaration_statement->type()->span() };
+
+	Types::Id variable_type_id = Types::builtin_unknown_id;
+	if (variable_declaration_statement->type()) {
+		variable_type_id = apply_mutability(TRY(check_type(variable_declaration_statement->type())), variable_declaration_statement->is_mutable());
+
+		if (m_types[variable_type_id].is<Types::Void>()) {
+			return Error { "Void type cannot be used as variable type", variable_declaration_statement->type()->span() };
+		}
 	}
 
 	if (variable_declaration_statement->initializer()) {
@@ -188,7 +193,7 @@ Result<void, Error> Typechecker::check_variable_declaration_statement(std::share
 		}
 
 		if (variable_type_id == Types::builtin_unknown_id) {
-			variable_type_id = apply_mutability(expression_type_id, variable_declaration_statement->starts_with_mut());
+			variable_type_id = apply_mutability(expression_type_id, variable_declaration_statement->is_mutable());
 		} else if (!are_types_compatible_for_assignment(variable_type_id, expression_type_id)) {
 			return Error { "Variable type doesn't match expression type", variable_declaration_statement->span() };
 		}

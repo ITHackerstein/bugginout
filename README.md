@@ -203,10 +203,9 @@ A statement evaluates an expression and discards its value. They are ended with 
 ```
 VARIABLE_DECLARATION_STATEMENT:
   (
-    "var" IDENTIFIER ":" TYPE |
-    "var" IDENTIFIER "=" EXPRESSION |
-		"mut" IDENTIFIER "=" EXPRESSION |
-    "var" IDENTIFIER ":" TYPE "=" EXPRESSION |
+    ("var" | "mut") IDENTIFIER ":" TYPE |
+    ("var" | "mut") IDENTIFIER "=" EXPRESSION |
+    ("var" | "mut") IDENTIFIER ":" TYPE "=" EXPRESSION |
   ) ";"
 ```
 

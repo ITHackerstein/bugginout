@@ -222,7 +222,7 @@ void ExpressionStatement::dump() const {
 void VariableDeclarationStatement::dump() const {
 	fmt::print("{{\"node\":\"VariableDeclarationStatement\",\"span\":[{},{}],", span().start, span().end);
 
-	fmt::print("\"starts_with_mut\":{}", m_starts_with_mut);
+	fmt::print("\"is_mutable\":{}", m_is_mutable);
 
 	fmt::print(",\"identifier\":");
 	m_identifier->dump();
