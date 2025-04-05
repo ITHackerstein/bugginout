@@ -453,7 +453,6 @@ Result<std::shared_ptr<AST::ArrayExpression const>, Error> Parser::parse_array_e
 }
 
 Result<std::vector<AST::FunctionArgument>, Error> Parser::parse_function_arguments() {
-	// FIXME: Should check the arguments
 	TRY(consume(Token::Type::LeftParenthesis));
 	std::vector<AST::FunctionArgument> arguments;
 	while (m_current_token.type() != Token::Type::RightParenthesis) {
@@ -466,6 +465,7 @@ Result<std::vector<AST::FunctionArgument>, Error> Parser::parse_function_argumen
 			argument_name = std::static_pointer_cast<AST::Identifier const>(argument);
 
 			if (m_current_token.type() == Token::Type::Colon) {
+				TRY(consume());
 				argument_value = TRY(parse_expression());
 			} else {
 				argument_value = argument_name;
