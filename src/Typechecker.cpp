@@ -495,11 +495,6 @@ Result<Types::Id, Error> Typechecker::check_assignment_expression(std::shared_pt
 		return Error { "Cannot assign to immutable value", assignment_expression->lhs()->span() };
 	}
 
-	// FIXME: We should handle array assignment at least if the RHS is an array expression used in initalization
-	if (m_types[lhs_type_id].is<Types::Array>() || m_types[lhs_type_id].is<Types::Slice>()) {
-		return Error { "Cannot assign to array or slices", assignment_expression->lhs()->span() };
-	}
-
 	switch (assignment_expression->op()) {
 	case AST::AssignmentOperator::Assignment:
 		{
@@ -714,6 +709,30 @@ bool Typechecker::are_types_compatible_for_assignment(Types::Id lhs, Types::Id r
 		auto lhs_inner_type_id = lhs_pointer.inner_type_id();
 		auto rhs_inner_type_id = rhs_pointer.inner_type_id();
 		return are_types_compatible_for_assignment(lhs_inner_type_id, rhs_inner_type_id);
+	}
+
+	if (m_types[lhs].is<Types::Array>() && m_types[rhs].is<Types::Array>()) {
+		auto const& lhs_array = m_types[lhs].as<Types::Array>();
+		auto const& rhs_array = m_types[rhs].as<Types::Array>();
+		if (lhs_array.size() != rhs_array.size()) {
+			return false;
+		}
+
+		return lhs_array.inner_type_id() == rhs_array.inner_type_id();
+	}
+
+	if (m_types[lhs].is<Types::Slice>()) {
+		if (m_types[rhs].is<Types::Array>()) {
+			auto const& lhs_slice = m_types[lhs].as<Types::Slice>();
+			auto const& rhs_array = m_types[rhs].as<Types::Array>();
+
+			return lhs_slice.inner_type_id() == rhs_array.inner_type_id();
+		} else if (m_types[rhs].is<Types::Slice>()) {
+			auto const& lhs_slice = m_types[lhs].as<Types::Slice>();
+			auto const& rhs_slice = m_types[rhs].as<Types::Slice>();
+
+			return lhs_slice.inner_type_id() == rhs_slice.inner_type_id();
+		}
 	}
 
 	return false;

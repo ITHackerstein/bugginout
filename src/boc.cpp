@@ -16,6 +16,11 @@ fn find(haystack: []i32, needle: i32): isize {
 
 	return -1;
 }
+
+fn main(): void {
+	var array = [1, 2, 3, 4, 5];
+	var index = find(haystack: array, needle: 2);
+}
 )"sv;
 
 	auto parser = TRY(bo::Parser::create(source));
