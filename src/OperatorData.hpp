@@ -104,6 +104,12 @@ consteval std::array<unsigned, Token::count()> generate_precedence_table() {
 		++p;
 	}
 
+	{
+		table[static_cast<std::size_t>(Token::Type::LeftParenthesis)] = p;
+		table[static_cast<std::size_t>(Token::Type::LeftSquareBracket)] = p;
+		++p;
+	}
+
 	return table;
 }
 

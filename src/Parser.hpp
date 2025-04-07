@@ -27,14 +27,14 @@ private:
 
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_unary_expression();
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_primary_expression();
-	Result<std::shared_ptr<AST::Expression const>, Error> parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, Token const& operator_token, unsigned minimum_precedence);
+	Result<std::shared_ptr<AST::Expression const>, Error> parse_secondary_expression(std::shared_ptr<AST::Expression const> lhs, unsigned minimum_precedence);
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression_inner(unsigned minimum_precedence);
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression();
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_expression_with_restrictions(int restrictions);
 	Result<std::shared_ptr<AST::BlockExpression const>, Error> parse_block_expression();
 	Result<std::shared_ptr<AST::IfExpression const>, Error> parse_if_expression();
 	Result<std::shared_ptr<AST::ArrayExpression const>, Error> parse_array_expression();
-	Result<std::vector<AST::FunctionArgument>, Error> parse_function_arguments();
+	Result<std::shared_ptr<AST::FunctionCallExpression const>, Error> parse_function_call_expression(std::shared_ptr<AST::Identifier const> function_name);
 
 	Result<std::shared_ptr<AST::Statement const>, Error> parse_statement();
 	Result<std::shared_ptr<AST::VariableDeclarationStatement const>, Error> parse_variable_declaration_statement();

@@ -7,8 +7,22 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
+fn find(haystack: []i32, needle: i32): isize {
+	mut i = 0_isize;
+	for (element in haystack) {
+		if (element == needle) {
+			return i;
+		}
+
+		++i;
+	}
+
+	-1
+}
+
 fn main(): void {
-	var a: i32 = 1_i32;
+	var array = [1, 2, 3, 4, 5];
+	var index = find(haystack: array, needle: [1, 2, 3, 4, 5][2]);
 }
 )"sv;
 
