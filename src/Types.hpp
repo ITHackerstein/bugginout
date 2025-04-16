@@ -95,6 +95,21 @@ private:
 	Id m_inner_type_id;
 };
 
+class Range {
+public:
+	explicit Range(Id element_type_id, bool is_inclusive)
+	  : m_element_type_id(element_type_id), m_is_inclusive(is_inclusive) {}
+
+	inline bool operator==(Range const&) const = default;
+
+	Id element_type_id() const { return m_element_type_id; }
+	bool is_inclusive() const { return m_is_inclusive; }
+
+private:
+	Id m_element_type_id;
+	bool m_is_inclusive;
+};
+
 class Type {
 private:
 	// clang-format off
@@ -104,7 +119,8 @@ private:
 #undef BO_ENUMERATE_BUILTIN_TYPE
 	  Pointer,
 	  Array,
-	  Slice>;
+	  Slice,
+		Range>;
 	// clang-format on
 
 public:
@@ -115,6 +131,7 @@ public:
 	static Type pointer(Pointer::Kind kind, Id inner_type_id, bool is_mutable = false) { return Type(Pointer { kind, inner_type_id }, is_mutable); }
 	static Type array(std::size_t size, Id inner_type_id, bool is_mutable = false) { return Type(Array { size, inner_type_id }, is_mutable); }
 	static Type slice(Id inner_type_id, bool is_mutable = false) { return Type(Slice { inner_type_id }, is_mutable); }
+	static Type range(Id element_type_id, bool is_inclusive, bool is_mutable = false) { return Type(Range { element_type_id, is_inclusive }, is_mutable); }
 
 	static Type apply_mutability(Type const& type, bool is_mutable) {
 		if (type.is_mutable() == is_mutable) {
@@ -123,6 +140,8 @@ public:
 
 		return Type(TypeVariant { type.m_impl }, is_mutable);
 	}
+
+	inline bool operator==(Type const&) const = default;
 
 	template<typename T>
 	bool is() const { return std::holds_alternative<T>(m_impl); }
@@ -206,8 +225,6 @@ public:
 
 		return std::visit(visitor, m_impl);
 	}
-
-	inline bool operator==(Type const&) const = default;
 
 private:
 	explicit Type(TypeVariant&& impl, bool is_mutable)
