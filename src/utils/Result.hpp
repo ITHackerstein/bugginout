@@ -10,11 +10,17 @@
 template<typename ValueType, typename ErrorType>
 class [[nodiscard]] Result {
 public:
+	Result(ValueType const& value)
+	  : m_impl(value) {}
+
 	Result(ValueType&& value)
-	  : m_impl(std::forward<ValueType>(value)) {}
+	  : m_impl(std::move(value)) {}
+
+	Result(ErrorType const& error)
+	  : m_impl(error) {}
 
 	Result(ErrorType&& error)
-	  : m_impl(std::forward<ErrorType>(error)) {}
+	  : m_impl(std::move(error)) {}
 
 	Result(Result const&) = default;
 	Result(Result&&) = default;
@@ -52,8 +58,11 @@ class [[nodiscard]] Result<void, ErrorType> {
 public:
 	Result() = default;
 
-	Result(ErrorType&& error)
-	  : m_impl(std::forward<ErrorType>(error)) {}
+	Result(ErrorType const& error)
+	  : m_impl(error) {}
+
+	Result(ErrorType& error)
+	  : m_impl(std::move(error)) {}
 
 	Result(Result const&) = default;
 	Result(Result&&) = default;

@@ -30,8 +30,9 @@ fn main(): void {
 	auto program = TRY(parser.parse_program());
 	program->dump();
 	fmt::println("");
-	bo::Typechecker typechecker { program };
-	TRY(typechecker.check());
+	bo::Typechecker typechecker;
+	TRY(typechecker.check(program));
+	typechecker.program().dump();
 	return {};
 }
 
