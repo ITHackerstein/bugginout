@@ -1,5 +1,4 @@
 #include "AST.hpp"
-#include "fmt/base.h"
 
 #include <fmt/core.h>
 
@@ -135,11 +134,11 @@ void AddressOfExpression::dump() const {
 
 void RangeExpression::dump() const {
 	fmt::print("{{\"node\":\"RangeExpression\",\"span\":[{},{}],", span().start, span().end);
+	fmt::print(",\"is_inclusive\":{}", m_is_inclusive);
 	fmt::print("\"start\":");
 	m_start->dump();
 	fmt::print(",\"end\":");
 	m_end->dump();
-	fmt::print(",\"is_inclusive\":{}", m_is_inclusive);
 	fmt::print("}}");
 }
 

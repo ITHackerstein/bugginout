@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(fmt)
 
 add_executable(boc
 	AST.cpp
+	CheckedAST.cpp
 	Lexer.cpp
 	Parser.cpp
 	Span.cpp

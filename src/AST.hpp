@@ -23,7 +23,6 @@ protected:
 	explicit Node(Span span)
 	  : m_span(span) {}
 
-private:
 	Span m_span;
 };
 
