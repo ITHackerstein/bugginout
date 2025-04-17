@@ -14,6 +14,7 @@ add_executable(boc
 	Parser.cpp
 	Span.cpp
 	Token.cpp
+	Transpiler.cpp
 	Typechecker.cpp
 	boc.cpp
 )

@@ -1,5 +1,6 @@
 #include "Error.hpp"
 #include "Parser.hpp"
+#include "Transpiler.hpp"
 #include "Typechecker.hpp"
 #include "utils/Result.hpp"
 
@@ -7,32 +8,20 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
-fn find(haystack: []i32, needle: i32): isize {
-	mut i = 0_isize;
-	for (element in haystack) {
-		if (element == needle) {
-			return i;
-		}
-
-		++i;
-	}
-
-	-1
-}
-
 fn main(): void {
-	var array = [1, 2, 3, 4, 5];
-	var index = find(haystack: array, needle: [1, 2, 3, 4, 5][2]);
+	for (i in 0..<10) {
+		i;
+	}
 }
 )"sv;
 
 	auto parser = TRY(bo::Parser::create(source));
 	auto program = TRY(parser.parse_program());
-	program->dump();
-	fmt::println("");
 	bo::Typechecker typechecker;
 	TRY(typechecker.check(program));
-	typechecker.program().dump();
+	bo::Transpiler transpiler(typechecker.program());
+	auto code = TRY(transpiler.transpile());
+	fmt::print("{}", code);
 	return {};
 }
 
