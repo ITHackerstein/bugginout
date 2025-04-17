@@ -183,7 +183,7 @@ void FunctionCallExpression::dump(Program const& program) const {
 	program.dump_type(type_id());
 	fmt::print(",\"span\":[{},{}]", span().start, span().end);
 	fmt::print(",\"function\":");
-	m_function->dump(program);
+	program.get_function(m_function_id)->dump(program);
 	fmt::print(",\"arguments\":[");
 	for (std::size_t i = 0; i < m_arguments.size(); ++i) {
 		auto const& argument = m_arguments[i];
@@ -268,7 +268,7 @@ void Function::dump(Program const& program) const {
 		fmt::print("{{");
 		fmt::print("\"is_anonymous\":{}", parameter.is_anonymous);
 		fmt::print(",\"variable\":");
-		program.dump_variable(parameter.variable_id);
+		program.dump_variable(parameter.variable);
 		fmt::print("}}");
 
 		if (i != m_parameters.size() - 1) {
@@ -276,6 +276,8 @@ void Function::dump(Program const& program) const {
 		}
 	}
 	fmt::print("]");
+	fmt::print(",\"is_builtin\":");
+	fmt::print("{}", m_is_builtin);
 	fmt::print(",\"body\":");
 	m_body->dump(program);
 	fmt::print("}}");
@@ -330,7 +332,18 @@ void ReturnStatement::dump(Program const& program) const {
 }
 
 Program::Program() {
+	using namespace std::literals;
+
 #define BO_ENUMERATE_BUILTIN_TYPE(klass_name, type_name) m_types.push_back(Types::Type::builtin_##type_name());
+	_BO_ENUMERATE_BUILTIN_TYPES
+#undef BO_ENUMERATE_BUILTIN_TYPE
+
+#define BO_ENUMERATE_BUILTIN_TYPE(klass_name, type_name)                                                                                    \
+	if constexpr (#type_name != "unknown"sv) {                                                                                                \
+		auto scope_id = create_scope();                                                                                                         \
+		auto parameters = std::vector<FunctionParameter> { { Variable { Types::builtin_##type_name##_id, "value", Span(), scope_id }, true } }; \
+		m_functions.push_back(std::make_shared<Function const>("print", std::move(parameters), Types::builtin_void_id, nullptr, true, Span())); \
+	}
 	_BO_ENUMERATE_BUILTIN_TYPES
 #undef BO_ENUMERATE_BUILTIN_TYPE
 }
@@ -377,13 +390,9 @@ std::optional<std::size_t> Program::find_variable(std::string_view name, std::si
 	return std::nullopt;
 }
 
-Variable const& Program::get_variable(std::size_t id) const {
-	return m_variables[id];
-}
-
-std::size_t Program::define_variable(Variable&& variable) {
+std::size_t Program::define_variable(Variable variable) {
 	assert(!find_variable(variable.name, variable.owner_scope_id));
-	m_variables.push_back(std::move(variable));
+	m_variables.push_back(variable);
 	return m_variables.size() - 1;
 }
 
@@ -392,14 +401,41 @@ std::size_t Program::create_scope(std::optional<std::size_t> parent) {
 	return m_scopes.size() - 1;
 }
 
-std::shared_ptr<Function const> Program::find_function(std::string_view name) const {
-	auto it = std::find_if(m_functions.begin(), m_functions.end(), [&](auto const& f) { return f->name() == name; });
-	return it != m_functions.end() ? *it : nullptr;
+std::optional<std::size_t> Program::find_function(std::string_view name, std::vector<Types::Id> const& signature) const {
+	for (std::size_t i = 0; i < m_functions.size(); ++i) {
+		if (m_functions[i]->name() != name) {
+			continue;
+		}
+
+		auto const& parameters = m_functions[i]->parameters();
+
+		if (parameters.size() != signature.size()) {
+			continue;
+		}
+
+		bool signature_match = true;
+		for (std::size_t j = 0; j < parameters.size(); ++j) {
+			if (parameters[j].variable.type_id != signature[j]) {
+				signature_match = false;
+				break;
+			}
+		}
+
+		if (signature_match) {
+			return i;
+		}
+	}
+
+	return {};
 }
 
 std::size_t Program::add_function(std::shared_ptr<Function const> function) {
-	auto it = std::find_if(m_functions.begin(), m_functions.end(), [&](auto const& f) { return f->name() == function->name(); });
-	assert(it == m_functions.end());
+	std::vector<Types::Id> signature;
+	for (auto const& parameter : function->parameters()) {
+		signature.push_back(parameter.variable.type_id);
+	}
+
+	assert(!find_function(function->name(), signature));
 	m_functions.push_back(std::move(function));
 	m_span = Span::merge(m_span, m_functions.back()->span());
 	return m_functions.size() - 1;
@@ -447,8 +483,7 @@ void Program::dump_type(Types::Id id) const {
 	fmt::print("}}");
 }
 
-void Program::dump_variable(std::size_t id) const {
-	auto const& variable = m_variables[id];
+void Program::dump_variable(Variable const& variable) const {
 	fmt::print("{{");
 	fmt::print("\"name\":{:?}", variable.name);
 	fmt::print(",\"type\":");
@@ -472,5 +507,4 @@ void Program::dump() const {
 }
 
 }
-
 }

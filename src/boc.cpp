@@ -8,10 +8,12 @@
 
 Result<void, bo::Error> my_main() {
 	auto source = R"(
+fn add(anon a: u32, anon b: u32): u32 { a + b }
+fn add(anon a: i32, anon b: i32): i32 { a + b }
+
 fn main(): void {
-	for (i in 0..<10) {
-		i;
-	}
+	print(add(1_u32, 2_u32));
+	print(add(1_i32, 2_i32));
 }
 )"sv;
 

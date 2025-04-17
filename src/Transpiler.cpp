@@ -5,7 +5,9 @@ namespace bo {
 Result<std::string, Error> Transpiler::transpile() {
 	add_prelude();
 	for (auto function : m_program.functions()) {
-		TRY(transpile_function(function));
+		if (!function->is_builtin()) {
+			TRY(transpile_function(function));
+		}
 	}
 
 	return m_code.str();
@@ -23,6 +25,7 @@ void Transpiler::add_prelude() {
 	m_code << R"(#include <cstdint>
 #include <array>
 #include <span>
+#include <print>
 
 using u8 = std::uint8_t;
 using u16 = std::uint16_t;
@@ -76,6 +79,11 @@ private:
     ElementType m_start;
     ElementType m_end;
 };
+
+template<typename T>
+void print(T value) {
+	std::print("{}", value);
+}
 
 void bo_main();
 int main(int argc, char** argv) {
@@ -326,10 +334,10 @@ Result<void, Error> Transpiler::transpile_function(std::shared_ptr<CheckedAST::F
 	m_code << function->name();
 	m_code << "(";
 	for (std::size_t i = 0; i < function->parameters().size(); ++i) {
-		auto const& variable = m_program.get_variable(function->parameters()[i].variable_id);
-		TRY(transpile_type(variable.type_id));
+		auto const& parameter = function->parameters()[i];
+		TRY(transpile_type(parameter.variable.type_id));
 		m_code << " ";
-		m_code << variable.name;
+		m_code << parameter.variable.name;
 
 		if (i < function->parameters().size() - 1) {
 			m_code << ", ";
@@ -707,7 +715,8 @@ Result<void, Error> Transpiler::transpile_if_expression(std::shared_ptr<CheckedA
 }
 
 Result<void, Error> Transpiler::transpile_function_call_expression(std::shared_ptr<CheckedAST::FunctionCallExpression const> function_call_expression) {
-	m_code << function_call_expression->function()->name();
+	auto const& function = m_program.get_function(function_call_expression->function_id());
+	m_code << function->name();
 	m_code << "(";
 	for (std::size_t i = 0; i < function_call_expression->arguments().size(); ++i) {
 		auto const& argument = function_call_expression->arguments()[i];

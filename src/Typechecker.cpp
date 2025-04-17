@@ -87,16 +87,11 @@ Result<Types::Id, Error> Typechecker::check_type(std::shared_ptr<AST::Type const
 
 Result<std::shared_ptr<CheckedAST::Function const>, Error> Typechecker::check_function_declaration(std::shared_ptr<AST::FunctionDeclarationStatement const> function_declaration) {
 	auto function_name = function_declaration->name()->id();
-	if (m_program.find_function(function_name)) {
-		return Error { "Function already declared", function_declaration->name()->span() };
-	}
+	std::vector<CheckedAST::FunctionParameter> checked_parameters;
+	std::vector<Types::Id> signature;
 
-	auto function_return_type_id = TRY(check_type(function_declaration->return_type()));
 	m_current_scope = m_program.create_scope();
-	m_expected_return_type_id = function_return_type_id;
-
-	std::vector<CheckedAST::FunctionParameter> function_parameters;
-	for (auto parameter : function_declaration->parameters()) {
+	for (auto const& parameter : function_declaration->parameters()) {
 		auto parameter_name = parameter.name->id();
 		auto parameter_type_id = TRY(check_type(parameter.type));
 		if (m_program.get_type(parameter_type_id).is<Types::Void>()) {
@@ -104,8 +99,19 @@ Result<std::shared_ptr<CheckedAST::Function const>, Error> Typechecker::check_fu
 		}
 
 		auto parameter_span = parameter.name->span();
-		auto variable_id = TRY(define_variable(parameter_type_id, parameter_name, parameter_span));
-		function_parameters.emplace_back(variable_id, parameter.is_anonymous);
+		auto variable = CheckedAST::Variable { parameter_type_id, parameter_name, parameter_span, *m_current_scope };
+		checked_parameters.emplace_back(variable, parameter.is_anonymous);
+	}
+
+	if (m_program.find_function(function_name, signature)) {
+		return Error { "Function already declared", function_declaration->name()->span() };
+	}
+
+	auto function_return_type_id = TRY(check_type(function_declaration->return_type()));
+	m_expected_return_type_id = function_return_type_id;
+
+	for (auto const& parameter : checked_parameters) {
+		m_program.define_variable(parameter.variable);
 	}
 
 	auto checked_block = TRY(check_block_expression(function_declaration->body()));
@@ -113,7 +119,7 @@ Result<std::shared_ptr<CheckedAST::Function const>, Error> Typechecker::check_fu
 		return Error { "Incompatible return types", function_declaration->return_type()->span() };
 	}
 
-	auto checked_function = std::make_shared<CheckedAST::Function const>(function_name, std::move(function_parameters), function_return_type_id, checked_block, function_declaration->span());
+	auto checked_function = std::make_shared<CheckedAST::Function const>(function_name, std::move(checked_parameters), function_return_type_id, checked_block, false, function_declaration->span());
 	m_expected_return_type_id.reset();
 	m_current_scope.reset();
 	return checked_function;
@@ -693,39 +699,34 @@ Result<std::shared_ptr<CheckedAST::IfExpression const>, Error> Typechecker::chec
 }
 
 Result<std::shared_ptr<CheckedAST::FunctionCallExpression const>, Error> Typechecker::check_function_call_expression(std::shared_ptr<AST::FunctionCallExpression const> function_call_expression) {
-	auto function = m_program.find_function(function_call_expression->name()->id());
-	if (function == nullptr) {
+	auto function_name = function_call_expression->name()->id();
+	std::vector<CheckedAST::FunctionArgument> checked_arguments;
+	std::vector<Types::Id> signature;
+
+	for (auto const& argument : function_call_expression->arguments()) {
+		auto checked_argument = TRY(check_expression(argument.value));
+		if (m_program.get_type(checked_argument->type_id()).is<Types::Void>()) {
+			return Error { "Void type cannot be used as function argument", argument.value->span() };
+		}
+
+		checked_arguments.emplace_back(argument.name ? argument.name->id() : "", checked_argument);
+		signature.push_back(checked_argument->type_id());
+	}
+
+	auto function_id = m_program.find_function(function_name, signature);
+	if (!function_id) {
 		return Error { "Unknown function", function_call_expression->name()->span() };
 	}
 
+	auto const& function = m_program.get_function(*function_id);
 	auto const& parameters = function->parameters();
-	auto const& arguments = function_call_expression->arguments();
-
-	if (parameters.size() != arguments.size()) {
-		return Error { "Function call has wrong number of parameters", function_call_expression->span() };
+	for (std::size_t i = 0; i < checked_arguments.size(); ++i) {
+		if (!parameters[i].is_anonymous && checked_arguments[i].name != parameters[i].variable.name) {
+			return Error { "Function call has wrong parameter name", function_call_expression->arguments()[i].name->span() };
+		}
 	}
 
-	std::vector<CheckedAST::FunctionArgument> checked_arguments;
-	for (std::size_t i = 0; i < arguments.size(); ++i) {
-		auto parameter_declaration = m_program.get_variable(parameters[i].variable_id);
-		auto checked_argument_value = TRY(check_expression(arguments[i].value));
-
-		if (m_program.get_type(checked_argument_value->type_id()).is<Types::Void>()) {
-			return Error { "Void type cannot be used as an argument", arguments[i].value->span() };
-		}
-
-		if (!are_types_compatible_for_assignment(parameter_declaration.type_id, checked_argument_value->type_id())) {
-			return Error { "Function call has wrong parameter type", arguments[i].value->span() };
-		}
-
-		if (!parameters[i].is_anonymous && arguments[i].name->id() != parameter_declaration.name) {
-			return Error { "Function call has wrong parameter name", arguments[i].name->span() };
-		}
-
-		checked_arguments.emplace_back(arguments[i].name->id(), checked_argument_value);
-	}
-
-	return std::make_shared<CheckedAST::FunctionCallExpression const>(function, checked_arguments, function->return_type_id(), function_call_expression->span());
+	return std::make_shared<CheckedAST::FunctionCallExpression const>(*function_id, checked_arguments, function->return_type_id(), function_call_expression->span());
 }
 
 Result<std::shared_ptr<CheckedAST::ArrayExpression const>, Error> Typechecker::check_array_expression(std::shared_ptr<AST::ArrayExpression const> array_expression, [[maybe_unused]] Types::Id type_hint) {

@@ -11,6 +11,24 @@ namespace bo {
 
 namespace CheckedAST {
 
+class Scope {
+public:
+	explicit Scope(std::optional<std::size_t> parent)
+	  : m_parent(parent) {}
+
+	std::optional<std::size_t> parent() const { return m_parent; }
+
+private:
+	std::optional<std::size_t> m_parent;
+};
+
+struct Variable {
+	Types::Id type_id;
+	std::string_view name;
+	Span declaration_span;
+	std::size_t owner_scope_id;
+};
+
 class Program;
 class Node {
 public:
@@ -280,20 +298,19 @@ struct FunctionArgument {
 	std::shared_ptr<Expression const> value;
 };
 
-class Function;
 class FunctionCallExpression : public Expression {
 public:
-	explicit FunctionCallExpression(std::shared_ptr<Function const> function, std::vector<FunctionArgument> arguments, Types::Id type_id, Span span)
-	  : Expression(type_id, span), m_function(function), m_arguments(std::move(arguments)) {}
+	explicit FunctionCallExpression(std::size_t function_id, std::vector<FunctionArgument> arguments, Types::Id type_id, Span span)
+	  : Expression(type_id, span), m_function_id(function_id), m_arguments(std::move(arguments)) {}
 
 	virtual void dump(Program const&) const override;
 	virtual bool is_function_call_expression() const override { return true; }
 
-	std::shared_ptr<Function const> function() const { return m_function; }
+	std::size_t function_id() const { return m_function_id; }
 	std::vector<FunctionArgument> const& arguments() const { return m_arguments; }
 
 private:
-	std::shared_ptr<Function const> m_function;
+	std::size_t m_function_id;
 	std::vector<FunctionArgument> m_arguments;
 };
 
@@ -360,14 +377,14 @@ private:
 };
 
 struct FunctionParameter {
-	std::size_t variable_id;
+	Variable variable;
 	bool is_anonymous;
 };
 
 class Function : public Statement {
 public:
-	explicit Function(std::string_view name, std::vector<FunctionParameter>&& parameters, Types::Id return_type_id, std::shared_ptr<BlockExpression const> body, Span span)
-	  : Statement(Types::builtin_void_id, span), m_name(name), m_parameters(std::move(parameters)), m_return_type_id(return_type_id), m_body(body) {}
+	explicit Function(std::string_view name, std::vector<FunctionParameter>&& parameters, Types::Id return_type_id, std::shared_ptr<BlockExpression const> body, bool is_builtin, Span span)
+	  : Statement(Types::builtin_void_id, span), m_name(name), m_parameters(std::move(parameters)), m_return_type_id(return_type_id), m_body(body), m_is_builtin(is_builtin) {}
 
 	virtual void dump(Program const&) const override;
 
@@ -375,12 +392,14 @@ public:
 	std::vector<FunctionParameter> const& parameters() const { return m_parameters; }
 	Types::Id return_type_id() const { return m_return_type_id; }
 	std::shared_ptr<BlockExpression const> body() const { return m_body; }
+	bool is_builtin() const { return m_is_builtin; }
 
 private:
 	std::string_view m_name;
 	std::vector<FunctionParameter> m_parameters;
 	Types::Id m_return_type_id;
 	std::shared_ptr<BlockExpression const> m_body;
+	bool m_is_builtin;
 };
 
 class ForStatement : public Statement {
@@ -452,24 +471,6 @@ private:
 	std::shared_ptr<Expression const> m_expression;
 };
 
-class Scope {
-public:
-	explicit Scope(std::optional<std::size_t> parent)
-	  : m_parent(parent) {}
-
-	std::optional<std::size_t> parent() const { return m_parent; }
-
-private:
-	std::optional<std::size_t> m_parent;
-};
-
-struct Variable {
-	Types::Id type_id;
-	std::string_view name;
-	Span declaration_span;
-	std::size_t owner_scope_id;
-};
-
 class Program {
 public:
 	explicit Program();
@@ -479,19 +480,21 @@ public:
 	Types::Type const& get_type(Types::Id) const;
 
 	std::optional<std::size_t> find_variable(std::string_view name, std::size_t scope_id) const;
-	Variable const& get_variable(std::size_t id) const;
-	std::size_t define_variable(Variable&&);
+	Variable const& get_variable(std::size_t id) const { return m_variables[id]; }
+	std::size_t define_variable(Variable);
 
 	std::size_t create_scope(std::optional<std::size_t> parent = std::nullopt);
 
 	std::vector<std::shared_ptr<Function const>> const& functions() const { return m_functions; }
-	std::shared_ptr<Function const> find_function(std::string_view name) const;
+	std::shared_ptr<Function const> get_function(std::size_t id) const { return m_functions[id]; }
+	std::optional<std::size_t> find_function(std::string_view name, std::vector<Types::Id> const& signature) const;
 	std::size_t add_function(std::shared_ptr<Function const> function);
 
 	Span span() const { return m_span; }
 
 	void dump_type(Types::Id) const;
-	void dump_variable(std::size_t id) const;
+	void dump_variable(std::size_t id) const { dump_variable(m_variables[id]); }
+	void dump_variable(Variable const&) const;
 	void dump() const;
 
 private:
