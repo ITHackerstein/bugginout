@@ -661,7 +661,7 @@ Result<std::shared_ptr<CheckedAST::RangeExpression const>, Error> Typechecker::c
 		return Error { "Range start and end types must be integers", range_expression->span() };
 	}
 
-	auto range_type_id = m_program.find_or_add_type(Types::Type::range(checked_range_start->type_id(), checked_range_end->type_id(), range_expression->is_inclusive()));
+	auto range_type_id = m_program.find_or_add_type(Types::Type::range(checked_range_start->type_id(), range_expression->is_inclusive()));
 	return std::make_shared<CheckedAST::RangeExpression const>(checked_range_start, checked_range_end, range_expression->is_inclusive(), range_type_id, range_expression->span());
 }
 
