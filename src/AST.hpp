@@ -31,6 +31,8 @@ public:
 	virtual bool is_expression() const override { return true; }
 	virtual bool is_parenthesized_expression() const { return false; }
 	virtual bool is_integer_literal() const { return false; }
+	virtual bool is_char_literal() const { return false; }
+	virtual bool is_boolean_literal() const { return false; }
 	virtual bool is_identifier() const { return false; }
 	virtual bool is_binary_expression() const { return false; }
 	virtual bool is_unary_expression() const { return false; }
@@ -143,6 +145,34 @@ private:
 	std::string_view m_value;
 	Type m_type;
 	std::string_view m_suffix;
+};
+
+class CharLiteral : public Expression {
+public:
+	explicit CharLiteral(std::string_view value, Span span)
+	  : Expression(span), m_value(value) {}
+
+	virtual void dump() const override;
+	virtual bool is_char_literal() const override { return true; }
+
+	std::string_view value() const { return m_value; }
+
+private:
+	std::string_view m_value;
+};
+
+class BooleanLiteral : public Expression {
+public:
+	explicit BooleanLiteral(bool value, Span span)
+	  : Expression(span), m_value(value) {}
+
+	virtual void dump() const override;
+	virtual bool is_boolean_literal() const override { return true; }
+
+	bool value() const { return m_value; }
+
+private:
+	bool m_value;
 };
 
 class Identifier : public Expression {

@@ -410,6 +410,10 @@ Result<void, Error> Transpiler::transpile_expression(std::shared_ptr<CheckedAST:
 		m_code << ")";
 	} else if (expression->is_integer_literal()) {
 		TRY(transpile_integer_literal(std::static_pointer_cast<CheckedAST::IntegerLiteral const>(expression)));
+	} else if (expression->is_char_literal()) {
+		TRY(transpile_char_literal(std::static_pointer_cast<CheckedAST::CharLiteral const>(expression)));
+	} else if (expression->is_boolean_literal()) {
+		TRY(transpile_boolean_literal(std::static_pointer_cast<CheckedAST::BooleanLiteral const>(expression)));
 	} else if (expression->is_identifier()) {
 		TRY(transpile_identifier(std::static_pointer_cast<CheckedAST::Identifier const>(expression)));
 	} else if (expression->is_binary_expression()) {
@@ -453,6 +457,26 @@ Result<void, Error> Transpiler::transpile_integer_literal(std::shared_ptr<Checke
 		m_code << integer_literal->value();
 		m_code << ")";
 	}
+
+	return {};
+}
+
+Result<void, Error> Transpiler::transpile_char_literal(std::shared_ptr<CheckedAST::CharLiteral const> char_literal) {
+	m_code << "static_cast<";
+	TRY(transpile_type(char_literal->type_id(), IgnoreFirstQualifier::Yes));
+	m_code << ">(";
+	m_code << char_literal->value();
+	m_code << ")";
+
+	return {};
+}
+
+Result<void, Error> Transpiler::transpile_boolean_literal(std::shared_ptr<CheckedAST::BooleanLiteral const> boolean_literal) {
+	m_code << "static_cast<";
+	TRY(transpile_type(boolean_literal->type_id(), IgnoreFirstQualifier::Yes));
+	m_code << ">(";
+	m_code << (boolean_literal->value() ? "true" : "false");
+	m_code << ")";
 
 	return {};
 }

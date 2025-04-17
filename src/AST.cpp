@@ -49,6 +49,14 @@ void IntegerLiteral::dump() const {
 	fmt::print("{{\"node\":\"IntegerLiteral\",\"span\":[{},{}],\"value\":{:?}}}", span().start, span().end, m_value);
 }
 
+void CharLiteral::dump() const {
+	fmt::print("{{\"node\":\"CharLiteral\",\"span\":[{},{}],\"value\":{:?}}}", span().start, span().end, m_value);
+}
+
+void BooleanLiteral::dump() const {
+	fmt::print("{{\"node\":\"BooleanLiteral\",\"span\":[{},{}],\"value\":{}}}", span().start, span().end, m_value);
+}
+
 void Identifier::dump() const {
 	fmt::print("{{\"node\":\"Identifier\",\"span\":[{},{}],\"id\":{:?}}}", span().start, span().end, m_id);
 }

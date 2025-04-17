@@ -33,6 +33,8 @@ private:
 	Result<std::shared_ptr<CheckedAST::ReturnStatement const>, Error> check_return_statement(std::shared_ptr<AST::ReturnStatement const>);
 	Result<std::shared_ptr<CheckedAST::Expression const>, Error> check_expression(std::shared_ptr<AST::Expression const>, Types::Id type_hint = Types::builtin_unknown_id);
 	Result<std::shared_ptr<CheckedAST::IntegerLiteral const>, Error> check_integer_literal(std::shared_ptr<AST::IntegerLiteral const>);
+	Result<std::shared_ptr<CheckedAST::CharLiteral const>, Error> check_char_literal(std::shared_ptr<AST::CharLiteral const>);
+	Result<std::shared_ptr<CheckedAST::BooleanLiteral const>, Error> check_boolean_literal(std::shared_ptr<AST::BooleanLiteral const>);
 	Result<std::shared_ptr<CheckedAST::Identifier const>, Error> check_identifier(std::shared_ptr<AST::Identifier const>);
 	Result<std::shared_ptr<CheckedAST::BinaryExpression const>, Error> check_binary_expression(std::shared_ptr<AST::BinaryExpression const>);
 	Result<std::shared_ptr<CheckedAST::UnaryExpression const>, Error> check_unary_expression(std::shared_ptr<AST::UnaryExpression const>);

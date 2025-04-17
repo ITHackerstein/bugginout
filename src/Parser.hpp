@@ -24,6 +24,8 @@ private:
 	Result<std::shared_ptr<AST::Type const>, Error> parse_type(bool allow_top_level_mut = true);
 	Result<std::shared_ptr<AST::Identifier const>, Error> parse_identifier(bool allow_keywords = false);
 	Result<std::shared_ptr<AST::IntegerLiteral const>, Error> parse_integer_literal();
+	Result<std::shared_ptr<AST::CharLiteral const>, Error> parse_char_literal();
+	Result<std::shared_ptr<AST::BooleanLiteral const>, Error> parse_boolean_literal();
 
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_unary_expression();
 	Result<std::shared_ptr<AST::Expression const>, Error> parse_primary_expression();

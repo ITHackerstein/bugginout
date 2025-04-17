@@ -28,6 +28,24 @@ void IntegerLiteral::dump(Program const& program) const {
 	fmt::print("}}");
 }
 
+void CharLiteral::dump(Program const& program) const {
+	fmt::print("{{\"node\":\"CharLiteral\"");
+	fmt::print(",\"type\":");
+	program.dump_type(type_id());
+	fmt::print(",\"span\":[{},{}]", span().start, span().end);
+	fmt::print(",\"value\":{:?}", m_value);
+	fmt::print("}}");
+}
+
+void BooleanLiteral::dump(Program const& program) const {
+	fmt::print("{{\"node\":\"BooleanLiteral\"");
+	fmt::print(",\"type\":");
+	program.dump_type(type_id());
+	fmt::print(",\"span\":[{},{}]", span().start, span().end);
+	fmt::print(",\"value\":{}", m_value);
+	fmt::print("}}");
+}
+
 void Identifier::dump(Program const& program) const {
 	fmt::print("{{\"node\":\"Identifier\"");
 	fmt::print(",\"type\":");

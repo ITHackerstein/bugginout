@@ -44,6 +44,8 @@ private:
 	Result<void, Error> transpile_return_statement(std::shared_ptr<CheckedAST::ReturnStatement const>);
 	Result<void, Error> transpile_expression(std::shared_ptr<CheckedAST::Expression const>);
 	Result<void, Error> transpile_integer_literal(std::shared_ptr<CheckedAST::IntegerLiteral const>);
+	Result<void, Error> transpile_char_literal(std::shared_ptr<CheckedAST::CharLiteral const>);
+	Result<void, Error> transpile_boolean_literal(std::shared_ptr<CheckedAST::BooleanLiteral const>);
 	Result<void, Error> transpile_identifier(std::shared_ptr<CheckedAST::Identifier const>);
 	Result<void, Error> transpile_binary_expression(std::shared_ptr<CheckedAST::BinaryExpression const>);
 	Result<void, Error> transpile_unary_expression(std::shared_ptr<CheckedAST::UnaryExpression const>);

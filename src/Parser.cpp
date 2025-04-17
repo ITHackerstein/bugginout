@@ -170,6 +170,11 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 	case Token::Type::OctalLiteral:
 	case Token::Type::HexadecimalLiteral:
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_integer_literal()));
+	case Token::Type::CharLiteral:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_char_literal()));
+	case Token::Type::KW_true:
+	case Token::Type::KW_false:
+		return std::static_pointer_cast<AST::Expression const>(TRY(parse_boolean_literal()));
 	case Token::Type::LeftParenthesis:
 		{
 			auto span = m_current_token.span();
@@ -624,6 +629,30 @@ Result<std::shared_ptr<AST::IntegerLiteral const>, Error> Parser::parse_integer_
 	literal_value = literal_value.substr(0, literal_suffix_start);
 
 	return std::make_shared<AST::IntegerLiteral const>(literal_value, literal_type, literal_suffix, literal_span);
+}
+
+Result<std::shared_ptr<AST::CharLiteral const>, Error> Parser::parse_char_literal() {
+	if (m_current_token.type() != Token::Type::CharLiteral) {
+		return Error { fmt::format("Expected char literal, got {:?}!", m_current_token.value()), m_current_token.span() };
+	}
+
+	auto literal_value = m_current_token.value();
+	auto literal_span = m_current_token.span();
+	TRY(consume());
+	return std::make_shared<AST::CharLiteral const>(literal_value, literal_span);
+}
+
+Result<std::shared_ptr<AST::BooleanLiteral const>, Error> Parser::parse_boolean_literal() {
+	switch (m_current_token.type()) {
+	case Token::Type::KW_true:
+		TRY(consume());
+		return std::make_shared<AST::BooleanLiteral const>(true, m_current_token.span());
+	case Token::Type::KW_false:
+		TRY(consume());
+		return std::make_shared<AST::BooleanLiteral const>(false, m_current_token.span());
+	default:
+		return Error { fmt::format("Expected boolean literal, got {:?}!", m_current_token.value()), m_current_token.span() };
+	}
 }
 
 Result<std::vector<AST::FunctionParameter>, Error> Parser::parse_function_parameters() {

@@ -276,6 +276,16 @@ Result<std::shared_ptr<CheckedAST::Expression const>, Error> Typechecker::check_
 		return std::static_pointer_cast<CheckedAST::Expression const>(checked_integer_literal);
 	}
 
+	if (expression->is_char_literal()) {
+		auto checked_char_literal = TRY(check_char_literal(std::static_pointer_cast<AST::CharLiteral const>(expression)));
+		return std::static_pointer_cast<CheckedAST::Expression const>(checked_char_literal);
+	}
+
+	if (expression->is_boolean_literal()) {
+		auto checked_boolean_literal = TRY(check_boolean_literal(std::static_pointer_cast<AST::BooleanLiteral const>(expression)));
+		return std::static_pointer_cast<CheckedAST::Expression const>(checked_boolean_literal);
+	}
+
 	if (expression->is_identifier()) {
 		auto checked_identifier = TRY(check_identifier(std::static_pointer_cast<AST::Identifier const>(expression)));
 		return std::static_pointer_cast<CheckedAST::Expression const>(checked_identifier);
@@ -377,6 +387,14 @@ Result<std::shared_ptr<CheckedAST::IntegerLiteral const>, Error> Typechecker::ch
 	}
 
 	return std::make_shared<CheckedAST::IntegerLiteral const>(integer_literal->value(), integer_literal->suffix(), integer_literal_type_id, integer_literal->span());
+}
+
+Result<std::shared_ptr<CheckedAST::CharLiteral const>, Error> Typechecker::check_char_literal(std::shared_ptr<AST::CharLiteral const> char_literal) {
+	return std::make_shared<CheckedAST::CharLiteral const>(char_literal->value(), char_literal->span());
+}
+
+Result<std::shared_ptr<CheckedAST::BooleanLiteral const>, Error> Typechecker::check_boolean_literal(std::shared_ptr<AST::BooleanLiteral const> boolean_literal) {
+	return std::make_shared<CheckedAST::BooleanLiteral const>(boolean_literal->value(), boolean_literal->span());
 }
 
 Result<std::shared_ptr<CheckedAST::Identifier const>, Error> Typechecker::check_identifier(std::shared_ptr<AST::Identifier const> identifier) {
