@@ -123,7 +123,8 @@ Result<std::shared_ptr<CheckedAST::Statement const>, Error> Typechecker::check_s
 	if (statement->is_expression_statement()) {
 		auto expression_statement = std::static_pointer_cast<AST::ExpressionStatement const>(statement);
 		auto checked_expression = TRY(check_expression(expression_statement->expression()));
-		auto checked_expression_statement = std::make_shared<CheckedAST::ExpressionStatement>(checked_expression, expression_statement->ends_with_semicolon(), checked_expression->type_id(), expression_statement->span());
+		auto checked_expression_statement_type_id = !expression_statement->ends_with_semicolon() ? checked_expression->type_id() : Types::builtin_void_id;
+		auto checked_expression_statement = std::make_shared<CheckedAST::ExpressionStatement>(checked_expression, expression_statement->ends_with_semicolon(), checked_expression_statement_type_id, expression_statement->span());
 		return std::static_pointer_cast<CheckedAST::Statement const>(checked_expression_statement);
 	}
 
@@ -677,15 +678,18 @@ Result<std::shared_ptr<CheckedAST::IfExpression const>, Error> Typechecker::chec
 	auto checked_then = TRY(check_block_expression(if_expression->then()));
 	std::shared_ptr<CheckedAST::Expression const> checked_else = nullptr;
 
+	Types::Id if_type_id = Types::builtin_void_id;
 	if (if_expression->else_()) {
 		checked_else = TRY(check_expression(if_expression->else_()));
 
 		if (checked_then->type_id() != checked_else->type_id()) {
 			return Error { "If branches must have the same type", if_expression->span() };
 		}
+
+		if_type_id = checked_then->type_id();
 	}
 
-	return std::make_shared<CheckedAST::IfExpression const>(checked_condition, checked_then, checked_else, checked_then->type_id(), if_expression->span());
+	return std::make_shared<CheckedAST::IfExpression const>(checked_condition, checked_then, checked_else, if_type_id, if_expression->span());
 }
 
 Result<std::shared_ptr<CheckedAST::FunctionCallExpression const>, Error> Typechecker::check_function_call_expression(std::shared_ptr<AST::FunctionCallExpression const> function_call_expression) {
