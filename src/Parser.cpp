@@ -188,7 +188,7 @@ Result<std::shared_ptr<AST::Expression const>, Error> Parser::parse_primary_expr
 	case Token::Type::KW_if:
 		return std::static_pointer_cast<AST::Expression const>(TRY(parse_if_expression()));
 	default:
-		assert(false);
+		return Error { fmt::format("Expected primary expression, got {:?}!", m_current_token.type()), m_current_token.span() };
 	}
 }
 
