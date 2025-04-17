@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 )";
 }
 
-Result<void, Error> Transpiler::transpile_type(Types::Id id) {
+Result<void, Error> Transpiler::transpile_type(Types::Id id, IgnoreFirstQualifier ignore_first_qualifier) {
 	auto const& type = m_program.get_type(id);
 	if (type.is<Types::Unknown>()) {
 		return Error { "Cannot transpile unknown type", {} };
@@ -133,6 +133,10 @@ Result<void, Error> Transpiler::transpile_type(Types::Id id) {
 		m_code << ">";
 	} else {
 		assert(false && "Type not handled");
+	}
+
+	if (ignore_first_qualifier == IgnoreFirstQualifier::No && !type.is_mutable()) {
+		m_code << " const";
 	}
 
 	return {};
@@ -329,7 +333,7 @@ Result<void, Error> Transpiler::transpile_function(std::shared_ptr<CheckedAST::F
 		return {};
 	}
 
-	TRY(transpile_type(function->return_type_id()));
+	TRY(transpile_type(function->return_type_id(), IgnoreFirstQualifier::Yes));
 	m_code << " ";
 	m_code << function->name();
 	m_code << "(";
@@ -444,7 +448,7 @@ Result<void, Error> Transpiler::transpile_integer_literal(std::shared_ptr<Checke
 		m_code << integer_literal->value() << "_" << integer_literal->suffix();
 	} else {
 		m_code << "static_cast<";
-		TRY(transpile_type(integer_literal->type_id()));
+		TRY(transpile_type(integer_literal->type_id(), IgnoreFirstQualifier::Yes));
 		m_code << ">(";
 		m_code << integer_literal->value();
 		m_code << ")";
@@ -461,7 +465,7 @@ Result<void, Error> Transpiler::transpile_identifier(std::shared_ptr<CheckedAST:
 
 Result<void, Error> Transpiler::transpile_binary_expression(std::shared_ptr<CheckedAST::BinaryExpression const> binary_expression) {
 	m_code << "static_cast<";
-	TRY(transpile_type(binary_expression->type_id()));
+	TRY(transpile_type(binary_expression->type_id(), IgnoreFirstQualifier::Yes));
 	m_code << ">(";
 
 	m_code << "(";
@@ -480,7 +484,7 @@ Result<void, Error> Transpiler::transpile_binary_expression(std::shared_ptr<Chec
 
 Result<void, Error> Transpiler::transpile_unary_expression(std::shared_ptr<CheckedAST::UnaryExpression const> unary_expression) {
 	m_code << "static_cast<";
-	TRY(transpile_type(unary_expression->type_id()));
+	TRY(transpile_type(unary_expression->type_id(), IgnoreFirstQualifier::Yes));
 	m_code << ">(";
 
 	transpile_unary_operator(unary_expression->op());
@@ -495,7 +499,7 @@ Result<void, Error> Transpiler::transpile_unary_expression(std::shared_ptr<Check
 
 Result<void, Error> Transpiler::transpile_assignment_expression(std::shared_ptr<CheckedAST::AssignmentExpression const> assignment_expression) {
 	m_code << "static_cast<";
-	TRY(transpile_type(assignment_expression->type_id()));
+	TRY(transpile_type(assignment_expression->type_id(), IgnoreFirstQualifier::Yes));
 	m_code << ">(";
 
 	m_code << "(";
@@ -529,7 +533,7 @@ Result<void, Error> Transpiler::transpile_assignment_expression(std::shared_ptr<
 
 Result<void, Error> Transpiler::transpile_update_expression(std::shared_ptr<CheckedAST::UpdateExpression const> update_expression) {
 	m_code << "static_cast<";
-	TRY(transpile_type(update_expression->type_id()));
+	TRY(transpile_type(update_expression->type_id(), IgnoreFirstQualifier::Yes));
 	m_code << ">(";
 
 	if (update_expression->is_prefixed()) {
@@ -731,7 +735,7 @@ Result<void, Error> Transpiler::transpile_function_call_expression(std::shared_p
 
 Result<void, Error> Transpiler::transpile_array_expression(std::shared_ptr<CheckedAST::ArrayExpression const> array_expression) {
 	m_code << "(";
-	TRY(transpile_type(array_expression->type_id()));
+	TRY(transpile_type(array_expression->type_id(), IgnoreFirstQualifier::Yes));
 	m_code << "{";
 	for (std::size_t i = 0; i < array_expression->elements().size(); ++i) {
 		TRY(transpile_expression(array_expression->elements()[i]));

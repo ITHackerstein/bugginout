@@ -19,7 +19,12 @@ private:
 	void add_new_line();
 	void add_prelude();
 
-	Result<void, Error> transpile_type(Types::Id);
+	enum class IgnoreFirstQualifier {
+		Yes,
+		No
+	};
+
+	Result<void, Error> transpile_type(Types::Id, IgnoreFirstQualifier = IgnoreFirstQualifier::No);
 	void transpile_binary_operator(AST::BinaryOperator);
 	void transpile_unary_operator(AST::UnaryOperator);
 	void transpile_assignment_operator(AST::AssignmentOperator);
